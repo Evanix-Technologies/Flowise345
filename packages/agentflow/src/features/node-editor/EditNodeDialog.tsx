@@ -56,6 +56,10 @@ function EditNodeDialogComponent({ show, dialogProps, onCancel }: EditNodeDialog
     const isConditionNode = data?.name === 'conditionAgentflow'
     const { cleanupOrphanedEdges } = useDynamicOutputPorts(data?.id ?? '', isConditionNode)
 
+    // Ref to read current data
+    const dataRef = useRef(data)
+    dataRef.current = data
+
     const onNodeLabelChange = () => {
         if (!data || !nodeNameRef.current) return
 
@@ -67,25 +71,26 @@ function EditNodeDialogComponent({ show, dialogProps, onCancel }: EditNodeDialog
 
     const onConfigChange = useCallback(
         (configKey: string, configValues: Record<string, unknown>, arrayContext?: { parentParamName: string; arrayIndex: number }) => {
-            if (!data) return
+            const current = dataRef.current
+            if (!current) return
 
             let updatedInputValues: Record<string, unknown>
 
             if (arrayContext) {
                 // Array-based config: write into the nested array item
-                const currentArray = [...((data.inputValues?.[arrayContext.parentParamName] as Record<string, unknown>[]) ?? [])]
+                const currentArray = [...((current.inputValues?.[arrayContext.parentParamName] as Record<string, unknown>[]) ?? [])]
                 const updatedItem = { ...(currentArray[arrayContext.arrayIndex] ?? {}), [configKey]: configValues }
                 currentArray[arrayContext.arrayIndex] = updatedItem
-                updatedInputValues = { ...data.inputValues, [arrayContext.parentParamName]: currentArray }
+                updatedInputValues = { ...current.inputValues, [arrayContext.parentParamName]: currentArray }
             } else {
                 // Top-level config
-                updatedInputValues = { ...data.inputValues, [configKey]: configValues }
+                updatedInputValues = { ...current.inputValues, [configKey]: configValues }
             }
 
-            updateNodeData(data.id, { inputValues: updatedInputValues })
-            setData({ ...data, inputValues: updatedInputValues })
+            updateNodeData(current.id, { inputValues: updatedInputValues })
+            setData({ ...current, inputValues: updatedInputValues })
         },
-        [data, updateNodeData]
+        [updateNodeData]
     )
 
     const onCustomDataChange = ({ inputParam, newValue }: { inputParam: InputParam; newValue: unknown }) => {
