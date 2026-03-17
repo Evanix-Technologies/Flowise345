@@ -1,4 +1,4 @@
-import { type ComponentType, useCallback, useEffect, useMemo, useRef } from 'react'
+import { type ComponentType, useCallback, useMemo, useRef } from 'react'
 
 import { Box, Button, Chip, IconButton } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
@@ -46,12 +46,10 @@ export function ArrayInput({
     const idCounterRef = useRef(0)
     const itemKeysRef = useRef<string[]>([])
 
-    // Grow keys array when new items appear (e.g. on mount or external data changes)
-    useEffect(() => {
-        while (itemKeysRef.current.length < arrayItems.length) {
-            itemKeysRef.current.push(`item-${idCounterRef.current++}`)
-        }
-    }, [arrayItems.length])
+    // Grow keys array synchronously so keys are available on the first render
+    while (itemKeysRef.current.length < arrayItems.length) {
+        itemKeysRef.current.push(`item-${idCounterRef.current++}`)
+    }
 
     // Use pre-computed itemParameters
     // Falls back to raw field definitions for nested arrays without show/hide conditions.
