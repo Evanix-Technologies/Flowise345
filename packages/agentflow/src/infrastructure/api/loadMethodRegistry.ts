@@ -53,35 +53,12 @@ export const loadMethodRegistry: Record<string, (_apis: ApiServices, _params?: R
     listVectorStores: (apis) => apis.storesApi.getVectorStores(),
     listEmbeddings: (apis) => apis.embeddingsApi.getEmbeddings(),
     listRuntimeStateKeys: (apis) => apis.runtimeStateApi.getRuntimeStateKeys(),
-    listRegions: (apis, params) => {
-        const nodeName = params?.nodeName
-        if (typeof nodeName !== 'string') {
-            return Promise.reject(new Error('`listRegions` requires a string `nodeName` parameter.'))
-        }
-        return apis.nodesApi.loadNodeMethod(nodeName, 'listRegions')
-    },
     listCredentials: (apis, params) => {
         const name = params?.name
         if (typeof name !== 'string') {
             return Promise.reject(new Error('`listCredentials` requires a string `name` parameter.'))
         }
         return apis.credentialsApi.getCredentialsByName(name)
-    },
-    listActions: (apis, params) => {
-        const nodeName = params?.nodeName
-        if (typeof nodeName !== 'string') {
-            return Promise.reject(new Error('`listActions` requires a string `nodeName` parameter.'))
-        }
-        const inputs = (params?.inputs as Record<string, unknown>) ?? {}
-        return apis.nodesApi.loadNodeMethod(nodeName, 'listActions', { currentNode: { inputs } })
-    },
-    listTables: (apis, params) => {
-        const nodeName = params?.nodeName
-        if (typeof nodeName !== 'string') {
-            return Promise.reject(new Error('`listTables` requires a string `nodeName` parameter.'))
-        }
-        const inputs = (params?.inputs as Record<string, unknown>) ?? {}
-        return apis.nodesApi.loadNodeMethod(nodeName, 'listTables', { currentNode: { inputs } })
     }
 }
 
