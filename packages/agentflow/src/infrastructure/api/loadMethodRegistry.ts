@@ -1,3 +1,4 @@
+import type { ChatflowsApi } from './chatflows'
 import type { CredentialsApi } from './credentials'
 import type { EmbeddingsApi } from './embeddings'
 import type { ChatModelsApi } from './models'
@@ -7,6 +8,7 @@ import type { StoresApi } from './stores'
 import type { ToolsApi } from './tools'
 
 export interface ApiServices {
+    chatflowsApi: ChatflowsApi
     chatModelsApi: ChatModelsApi
     toolsApi: ToolsApi
     credentialsApi: CredentialsApi
@@ -31,6 +33,7 @@ export interface ApiServices {
  * - `listVectorStores` — fetches vector stores via `POST /node-load-method/agentAgentflow`
  * - `listEmbeddings` — fetches embedding models via `POST /node-load-method/agentAgentflow`
  * - `listRuntimeStateKeys` — fetches runtime state keys via `POST /node-load-method/agentAgentflow`
+ * - `listFlows` — fetches all chatflows/agentflows via `GET /chatflows`; returns `{ label: name, name: id, description: type }`
  * - `listCredentials` — fetches credentials filtered by `params.name` via `GET /credentials?credentialName=<name>`
  * - `listActions` — fetches available actions for a node (e.g. Composio, MCP tools) via `POST /node-load-method/{nodeName}`;
  *   requires `params.nodeName` and accepts optional `params.inputs` forwarded as `currentNode.inputs`
@@ -53,6 +56,14 @@ export const loadMethodRegistry: Record<string, (_apis: ApiServices, _params?: R
     listVectorStores: (apis) => apis.storesApi.getVectorStores(),
     listEmbeddings: (apis) => apis.embeddingsApi.getEmbeddings(),
     listRuntimeStateKeys: (apis) => apis.runtimeStateApi.getRuntimeStateKeys(),
+    listFlows: async (apis) => {
+        const chatflows = await apis.chatflowsApi.getAllChatflows()
+        return chatflows.map((cf) => ({
+            label: cf.name,
+            name: cf.id,
+            description: cf.type === 'AGENTFLOW' ? 'Agentflow V2' : cf.type === 'MULTIAGENT' ? 'Agentflow V1' : 'Chatflow'
+        }))
+    },
     listCredentials: (apis, params) => {
         const name = params?.name
         if (typeof name !== 'string') {
