@@ -41,6 +41,12 @@ export interface ApiServices {
  *   requires `params.nodeName` and accepts optional `params.inputs` forwarded as `currentNode.inputs`
  *
  */
+function getChatflowTypeLabel(type: string | undefined): string {
+    if (type === 'AGENTFLOW') return 'Agentflow V2'
+    if (type === 'MULTIAGENT') return 'Agentflow V1'
+    return 'Chatflow'
+}
+
 export const loadMethodRegistry: Record<string, (_apis: ApiServices, _params?: Record<string, unknown>) => Promise<unknown>> = {
     listModels: (apis, params) => {
         const nodeName = params?.nodeName as string | undefined
@@ -61,7 +67,7 @@ export const loadMethodRegistry: Record<string, (_apis: ApiServices, _params?: R
         return chatflows.map((cf) => ({
             label: cf.name,
             name: cf.id,
-            description: cf.type === 'AGENTFLOW' ? 'Agentflow V2' : cf.type === 'MULTIAGENT' ? 'Agentflow V1' : 'Chatflow'
+            description: getChatflowTypeLabel(cf.type)
         }))
     },
     listCredentials: (apis, params) => {
