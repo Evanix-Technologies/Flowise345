@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 
+import { Info } from '@mui/icons-material'
 import {
     Alert,
     Box,
@@ -10,12 +11,15 @@ import {
     DialogContent,
     DialogTitle,
     FormControlLabel,
+    IconButton,
     MenuItem,
+    OutlinedInput,
     Select,
     Switch,
-    TextField,
+    Tooltip,
     Typography
 } from '@mui/material'
+import parser from 'html-react-parser'
 
 import type { ComponentCredentialSchema, CredentialSchemaInput } from '@/core/types'
 import { getDefaultValueForType } from '@/core/utils/credentialDefaults'
@@ -33,7 +37,7 @@ export interface CreateCredentialDialogProps {
  * Fetches the credential schema from the backend and renders a dynamic form.
  */
 export function CreateCredentialDialog({ open, credentialNames, onClose, onCreated }: CreateCredentialDialogProps) {
-    const { credentialsApi } = useApiContext()
+    const { credentialsApi, apiBaseUrl } = useApiContext()
 
     const [schemas, setSchemas] = useState<ComponentCredentialSchema[]>([])
     const [selectedSchema, setSelectedSchema] = useState<ComponentCredentialSchema | null>(null)
@@ -45,7 +49,7 @@ export function CreateCredentialDialog({ open, credentialNames, onClose, onCreat
 
     const selectSchema = useCallback((schema: ComponentCredentialSchema) => {
         setSelectedSchema(schema)
-        setCredentialName(schema.label ?? '')
+        setCredentialName('')
         // Initialize default values for each input
         const defaults: Record<string, unknown> = {}
         for (const input of schema.inputs ?? []) {
@@ -134,7 +138,36 @@ export function CreateCredentialDialog({ open, credentialNames, onClose, onCreat
 
     return (
         <Dialog open={open} onClose={handleClose} fullWidth maxWidth='sm'>
-            <DialogTitle>{selectedSchema ? selectedSchema.label : 'Select Credential Type'}</DialogTitle>
+            <DialogTitle sx={{ fontSize: '1rem' }}>
+                {selectedSchema ? (
+                    <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center' }}>
+                        <div
+                            style={{
+                                width: 50,
+                                height: 50,
+                                marginRight: 10,
+                                borderRadius: '50%',
+                                backgroundColor: 'white'
+                            }}
+                        >
+                            <img
+                                style={{
+                                    width: '100%',
+                                    height: '100%',
+                                    padding: 7,
+                                    borderRadius: '50%',
+                                    objectFit: 'contain'
+                                }}
+                                alt={selectedSchema.name}
+                                src={`${apiBaseUrl}/api/v1/components-credentials-icon/${selectedSchema.name}`}
+                            />
+                        </div>
+                        {selectedSchema.label}
+                    </div>
+                ) : (
+                    'Select Credential Type'
+                )}
+            </DialogTitle>
             <DialogContent>
                 {loading && (
                     <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
@@ -164,22 +197,39 @@ export function CreateCredentialDialog({ open, credentialNames, onClose, onCreat
                 )}
 
                 {selectedSchema && (
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <>
                         {selectedSchema.description && (
-                            <Alert severity='info' sx={{ mb: 1 }}>
-                                {selectedSchema.description}
-                            </Alert>
+                            <Box sx={{ pl: 2, pr: 2 }}>
+                                <div
+                                    style={{
+                                        display: 'flex',
+                                        flexDirection: 'row',
+                                        borderRadius: 10,
+                                        background: 'rgb(254,252,191)',
+                                        padding: 10,
+                                        marginTop: 10,
+                                        marginBottom: 10
+                                    }}
+                                >
+                                    <span style={{ color: 'rgb(116,66,16)' }}>{parser(selectedSchema.description)}</span>
+                                </div>
+                            </Box>
                         )}
 
-                        <TextField
-                            label='Credential Name'
-                            required
-                            fullWidth
-                            size='small'
-                            value={credentialName}
-                            onChange={(e) => setCredentialName(e.target.value)}
-                            autoFocus
-                        />
+                        <Box sx={{ p: 2 }}>
+                            <Typography variant='overline'>
+                                Credential Name
+                                <span style={{ color: 'red' }}>&nbsp;*</span>
+                            </Typography>
+                            <OutlinedInput
+                                fullWidth
+                                type='string'
+                                placeholder={selectedSchema.label}
+                                value={credentialName}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCredentialName(e.target.value)}
+                                autoFocus
+                            />
+                        </Box>
 
                         {(selectedSchema.inputs ?? [])
                             .filter((input) => !input.hidden)
@@ -191,7 +241,7 @@ export function CreateCredentialDialog({ open, credentialNames, onClose, onCreat
                                     onChange={(value) => handleFieldChange(input.name, value)}
                                 />
                             ))}
-                    </Box>
+                    </>
                 )}
             </DialogContent>
             <DialogActions>
@@ -220,55 +270,57 @@ interface CredentialFieldProps {
 
 function CredentialField({ input, value, onChange }: CredentialFieldProps) {
     const label = (
-        <>
+        <Typography>
             {input.label}
-            {!input.optional && <span style={{ color: 'red' }}> *</span>}
-        </>
+            {!input.optional && <span style={{ color: 'red' }}>&nbsp;*</span>}
+            {input.description && (
+                <Tooltip title={parser(input.description)} placement='right'>
+                    <IconButton sx={{ height: 15, width: 15, ml: 1, mt: -0.5 }}>
+                        <Info sx={{ height: 15, width: 15 }} />
+                    </IconButton>
+                </Tooltip>
+            )}
+        </Typography>
     )
 
     if (input.type === 'boolean') {
         return (
-            <FormControlLabel
-                control={<Switch checked={Boolean(value)} onChange={(e) => onChange(e.target.checked)} />}
-                label={<Typography variant='body2'>{label}</Typography>}
-            />
+            <Box sx={{ p: 2 }}>
+                <FormControlLabel
+                    control={<Switch checked={Boolean(value)} onChange={(_e, checked) => onChange(checked)} />}
+                    label={label}
+                />
+            </Box>
         )
     }
 
     if (input.type === 'options' && input.options) {
         return (
-            <Box>
-                <Typography variant='body2' sx={{ mb: 0.5 }}>
-                    {label}
-                </Typography>
-                <Select fullWidth size='small' value={(value as string) ?? ''} onChange={(e) => onChange(e.target.value)}>
+            <Box sx={{ p: 2 }}>
+                {label}
+                <Select fullWidth value={(value as string) ?? ''} onChange={(e) => onChange(e.target.value)}>
                     {input.options.map((opt) => (
                         <MenuItem key={opt.name} value={opt.name}>
                             {opt.label}
                         </MenuItem>
                     ))}
                 </Select>
-                {input.description && (
-                    <Typography variant='caption' color='text.secondary'>
-                        {input.description}
-                    </Typography>
-                )}
             </Box>
         )
     }
 
     return (
-        <TextField
-            fullWidth
-            size='small'
-            label={label}
-            type={input.type === 'password' ? 'password' : input.type === 'number' ? 'number' : 'text'}
-            multiline={input.type === 'json'}
-            rows={input.type === 'json' ? 4 : undefined}
-            placeholder={input.placeholder}
-            helperText={input.description}
-            value={(value as string) ?? ''}
-            onChange={(e) => onChange(e.target.value)}
-        />
+        <Box sx={{ p: 2 }}>
+            {label}
+            <OutlinedInput
+                fullWidth
+                type={input.type === 'password' ? 'password' : input.type === 'number' ? 'number' : 'text'}
+                multiline={input.type === 'json'}
+                rows={input.type === 'json' ? 4 : undefined}
+                placeholder={input.placeholder}
+                value={(value as string) ?? ''}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange(e.target.value)}
+            />
+        </Box>
     )
 }

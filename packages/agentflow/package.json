@@ -81,6 +81,7 @@
         "@uiw/react-codemirror": "^4.21.0",
         "axios": "^1.7.2",
         "flowise-react-json-view": "^1.21.7",
+        "html-react-parser": "^3.0.16",
         "lodash": "^4.17.21",
         "lowlight": "^3.3.0",
         "uuid": "^10.0.0"
