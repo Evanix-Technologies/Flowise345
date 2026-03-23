@@ -1,6 +1,5 @@
 import { Request, Response, NextFunction } from 'express'
 import { ChatMessageRatingType, ChatType, IReactFlowObject } from '../../Interface'
-import { WorkspaceUserService } from '../../enterprise/services/workspace-user.service'
 import chatflowsService from '../../services/chatflows'
 import chatMessagesService from '../../services/chat-messages'
 import { aMonthAgo, clearSessionMemory } from '../../utils'
@@ -9,7 +8,7 @@ import { Between, DeleteResult, FindOptionsWhere, In } from 'typeorm'
 import { ChatMessage } from '../../database/entities/ChatMessage'
 import { InternalFlowiseError } from '../../errors/internalFlowiseError'
 import { StatusCodes } from 'http-status-codes'
-import { GeneralErrorMessage } from '../../utils/constants'
+import { verifyChatflowAccess } from '../../utils/chatflowAccess'
 import { utilGetChatMessage } from '../../utils/getChatMessage'
 import { getPageAndLimitParams } from '../../utils/pagination'
 
@@ -316,24 +315,7 @@ const abortChatMessage = async (req: Request, res: Response, next: NextFunction)
         }
 
         // Authorization: verify the caller has access to this chatflow
-        const chatflow = await chatflowsService.getChatflowById(req.params.chatflowid)
-        if (!chatflow.isPublic) {
-            if (!req.user) {
-                return res.status(StatusCodes.UNAUTHORIZED).json({ message: GeneralErrorMessage.UNAUTHORIZED })
-            }
-            const appServer = getRunningExpressApp()
-            const queryRunner = appServer.AppDataSource.createQueryRunner()
-            try {
-                const workspaceUserService = new WorkspaceUserService()
-                const workspaceUser = await workspaceUserService.readWorkspaceUserByUserId(req.user.id, queryRunner)
-                const workspaceIds = workspaceUser.map((u: any) => u.workspaceId)
-                if (!workspaceIds.includes(chatflow.workspaceId)) {
-                    return res.status(StatusCodes.FORBIDDEN).json({ message: GeneralErrorMessage.FORBIDDEN })
-                }
-            } finally {
-                await queryRunner.release()
-            }
-        }
+        await verifyChatflowAccess(req.params.chatflowid, req.user)
 
         await chatMessagesService.abortChatMessage(req.params.chatid, req.params.chatflowid)
         return res.json({ status: 200, message: 'Chat message aborted' })
