@@ -1,6 +1,6 @@
 import type { AxiosInstance } from 'axios'
 
-import type { Credential } from '@/core/types'
+import type { ComponentCredentialSchema, CreateCredentialBody, Credential } from '@/core/types'
 
 /**
  * Create credentials API functions bound to a client instance
@@ -20,6 +20,22 @@ export function bindCredentialsApi(client: AxiosInstance) {
          */
         getCredentialsByName: async (credentialName: string | string[]): Promise<Credential[]> => {
             const response = await client.get('/credentials', { params: { credentialName } })
+            return response.data
+        },
+
+        /**
+         * Fetch the credential schema (field definitions) for a given component credential name.
+         */
+        getComponentCredentialSchema: async (name: string): Promise<ComponentCredentialSchema> => {
+            const response = await client.get(`/components-credentials/${name}`)
+            return response.data
+        },
+
+        /**
+         * Create a new credential.
+         */
+        createCredential: async (body: CreateCredentialBody): Promise<Credential> => {
+            const response = await client.post('/credentials', body)
             return response.data
         }
     }

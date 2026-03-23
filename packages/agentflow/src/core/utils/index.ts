@@ -9,3 +9,6 @@ export { evaluateFieldVisibility, evaluateParamVisibility, stripHiddenFieldValue
 
 // Dynamic output anchor utilities
 export { buildDynamicOutputAnchors, parseOutputHandleIndex } from './dynamicOutputAnchors'
+
+// Credential utilities
+export { getDefaultValueForType } from './credentialDefaults'
