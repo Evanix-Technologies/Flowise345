@@ -1,11 +1,7 @@
-import type { CredentialSchemaInput } from '@/core/types'
+import { getDefaultValueForType } from './inputDefaults'
 
-import { getDefaultValueForType } from './credentialDefaults'
-
-const makeInput = (overrides: Partial<CredentialSchemaInput> = {}): CredentialSchemaInput => ({
-    label: 'Test',
-    name: 'test',
-    type: 'string',
+const makeInput = (overrides: Record<string, unknown> = {}) => ({
+    type: 'string' as string,
     ...overrides
 })
 
@@ -32,15 +28,26 @@ describe('getDefaultValueForType', () => {
         expect(getDefaultValueForType(makeInput({ type: 'json' }))).toBe('{}')
     })
 
-    it('returns first option name for options with options present', () => {
-        const input = makeInput({
-            type: 'options',
-            options: [
-                { label: 'First', name: 'first' },
-                { label: 'Second', name: 'second' }
-            ]
-        })
-        expect(getDefaultValueForType(input)).toBe('first')
+    it('returns [] for array', () => {
+        expect(getDefaultValueForType(makeInput({ type: 'array' }))).toEqual([])
+    })
+
+    it('returns first option name for object options', () => {
+        expect(
+            getDefaultValueForType(
+                makeInput({
+                    type: 'options',
+                    options: [
+                        { label: 'First', name: 'first' },
+                        { label: 'Second', name: 'second' }
+                    ]
+                })
+            )
+        ).toBe('first')
+    })
+
+    it('returns first option value for string options', () => {
+        expect(getDefaultValueForType(makeInput({ type: 'options', options: ['alpha', 'beta'] }))).toBe('alpha')
     })
 
     it("returns '' for options with no options", () => {
@@ -57,6 +64,17 @@ describe('getDefaultValueForType', () => {
     })
 
     it("returns '' for unknown type", () => {
-        expect(getDefaultValueForType(makeInput({ type: 'unknown' as CredentialSchemaInput['type'] }))).toBe('')
+        expect(getDefaultValueForType(makeInput({ type: 'somethingElse' }))).toBe('')
+    })
+
+    it('works with InputParam-shaped objects', () => {
+        // InputParam has id, name, label, type, etc.
+        const inputParam = { id: 'p1', name: 'field', label: 'Field', type: 'boolean' }
+        expect(getDefaultValueForType(inputParam)).toBe(false)
+    })
+
+    it('works with CredentialSchemaInput-shaped objects', () => {
+        const credInput = { label: 'API Key', name: 'apiKey', type: 'password' }
+        expect(getDefaultValueForType(credInput)).toBe('')
     })
 })

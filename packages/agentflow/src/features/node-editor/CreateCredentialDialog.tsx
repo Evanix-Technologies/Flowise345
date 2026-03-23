@@ -21,7 +21,7 @@ import { JsonInput } from '@/atoms/JsonInput'
 import { SwitchInput } from '@/atoms/SwitchInput'
 import { TooltipWithParser } from '@/atoms/TooltipWithParser'
 import type { ComponentCredentialSchema, CredentialSchemaInput } from '@/core/types'
-import { getDefaultValueForType } from '@/core/utils/credentialDefaults'
+import { getDefaultValueForType } from '@/core/utils/inputDefaults'
 import { useApiContext } from '@/infrastructure/store/ApiContext'
 
 export interface CreateCredentialDialogProps {

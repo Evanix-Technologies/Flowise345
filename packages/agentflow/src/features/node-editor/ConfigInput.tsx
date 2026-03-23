@@ -7,7 +7,7 @@ import { IconSettings } from '@tabler/icons-react'
 
 import { type AsyncInputProps, NodeInputHandler } from '@/atoms'
 import type { InputParam, NodeData } from '@/core/types'
-import { evaluateFieldVisibility, initNode } from '@/core/utils'
+import { evaluateFieldVisibility, getDefaultValueForType, initNode } from '@/core/utils'
 import { useApiContext } from '@/infrastructure/store'
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -33,7 +33,7 @@ export interface ConfigInputProps {
 function initializeDefaults(params: InputParam[]): Record<string, unknown> {
     const defaults: Record<string, unknown> = {}
     for (const p of params) {
-        defaults[p.name] = p.default ?? ''
+        defaults[p.name] = getDefaultValueForType(p)
     }
     return defaults
 }
