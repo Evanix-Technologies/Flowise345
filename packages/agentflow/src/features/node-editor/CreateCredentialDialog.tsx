@@ -30,15 +30,18 @@ export interface CreateCredentialDialogProps {
     credentialNames: string[]
     onClose: () => void
     onCreated: (credentialId: string) => void
+    /** When set, the dialog opens in edit mode for the given credential ID. */
+    editCredentialId?: string
 }
 
 /**
- * Dialog for creating a new credential from within the node editor.
+ * Dialog for creating or editing a credential from within the node editor.
  * Fetches the credential schema from the backend and renders a dynamic form.
  */
-export function CreateCredentialDialog({ open, credentialNames, onClose, onCreated }: CreateCredentialDialogProps) {
+export function CreateCredentialDialog({ open, credentialNames, onClose, onCreated, editCredentialId }: CreateCredentialDialogProps) {
     const { credentialsApi, apiBaseUrl } = useApiContext()
     const theme = useTheme()
+    const isEditMode = !!editCredentialId
 
     const [schemas, setSchemas] = useState<ComponentCredentialSchema[]>([])
     const [selectedSchema, setSelectedSchema] = useState<ComponentCredentialSchema | null>(null)
@@ -65,7 +68,7 @@ export function CreateCredentialDialog({ open, credentialNames, onClose, onCreat
         setFormValues(defaults)
     }, [])
 
-    // Fetch credential schema(s) when dialog opens
+    // Fetch credential schema(s) when dialog opens, and load existing data in edit mode
     useEffect(() => {
         if (!open) return
 
@@ -95,6 +98,17 @@ export function CreateCredentialDialog({ open, credentialNames, onClose, onCreat
                         setSchemas(results)
                     }
                 }
+
+                // In edit mode, fetch existing credential and populate the form
+                if (editCredentialId && !cancelled) {
+                    const existing = await credentialsApi.getCredentialById(editCredentialId)
+                    if (!cancelled) {
+                        setCredentialName(existing.name)
+                        if (existing.plainDataObj) {
+                            setFormValues(existing.plainDataObj)
+                        }
+                    }
+                }
             } catch (err) {
                 if (!cancelled) {
                     setError(err instanceof Error ? err.message : 'Failed to load credential schema')
@@ -111,7 +125,7 @@ export function CreateCredentialDialog({ open, credentialNames, onClose, onCreat
         return () => {
             cancelled = true
         }
-    }, [open, credentialNamesKey, credentialsApi, selectSchema])
+    }, [open, credentialNamesKey, credentialsApi, selectSchema, editCredentialId])
 
     const handleFieldChange = useCallback((fieldName: string, value: unknown) => {
         setFormValues((prev) => ({ ...prev, [fieldName]: value }))
@@ -135,18 +149,21 @@ export function CreateCredentialDialog({ open, credentialNames, onClose, onCreat
                 }
             }
 
-            const result = await credentialsApi.createCredential({
+            const body = {
                 name: credentialName.trim(),
                 credentialName: selectedSchema.name,
                 plainDataObj
-            })
+            }
+            const result = isEditMode
+                ? await credentialsApi.updateCredential(editCredentialId!, body)
+                : await credentialsApi.createCredential(body)
             onCreated(result.id)
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to create credential')
+            setError(err instanceof Error ? err.message : isEditMode ? 'Failed to update credential' : 'Failed to create credential')
         } finally {
             setSubmitting(false)
         }
-    }, [selectedSchema, credentialName, formValues, credentialsApi, onCreated])
+    }, [selectedSchema, credentialName, formValues, credentialsApi, onCreated, isEditMode, editCredentialId])
 
     const handleClose = useCallback(() => {
         if (!submitting) onClose()
@@ -224,13 +241,15 @@ export function CreateCredentialDialog({ open, credentialNames, onClose, onCreat
                                         display: 'flex',
                                         flexDirection: 'row',
                                         borderRadius: 10,
-                                        background: theme.palette.warningBanner.background,
+                                        background: theme.palette.warningBanner?.background ?? '#fefcbf',
                                         padding: 10,
                                         marginTop: 10,
                                         marginBottom: 10
                                     }}
                                 >
-                                    <span style={{ color: theme.palette.warningBanner.text }}>{parser(selectedSchema.description)}</span>
+                                    <span style={{ color: theme.palette.warningBanner?.text ?? '#744210' }}>
+                                        {parser(selectedSchema.description)}
+                                    </span>
                                 </div>
                             </Box>
                         )}
@@ -269,7 +288,7 @@ export function CreateCredentialDialog({ open, credentialNames, onClose, onCreat
                 </Button>
                 {selectedSchema && (
                     <Button variant='contained' onClick={handleSubmit} disabled={!credentialName.trim() || submitting}>
-                        {submitting ? 'Adding...' : 'Add'}
+                        {submitting ? (isEditMode ? 'Saving...' : 'Adding...') : isEditMode ? 'Save' : 'Add'}
                     </Button>
                 )}
             </DialogActions>
@@ -323,14 +342,14 @@ function CredentialField({ input, value, onChange, disabled = false }: Credentia
                         display: 'flex',
                         flexDirection: 'row',
                         borderRadius: 10,
-                        background: theme.palette.warningBanner.background,
+                        background: theme.palette.warningBanner?.background ?? '#fefcbf',
                         padding: 10,
                         marginTop: 10,
                         marginBottom: 10
                     }}
                 >
                     <IconAlertTriangle size={36} color={theme.palette.warning.main} />
-                    <span style={{ color: theme.palette.warningBanner.text, marginLeft: 10 }}>{input.warning}</span>
+                    <span style={{ color: theme.palette.warningBanner?.text ?? '#744210', marginLeft: 10 }}>{input.warning}</span>
                 </div>
             )}
 

@@ -2,7 +2,7 @@ import { Fragment, useCallback, useState } from 'react'
 
 import { Box, CircularProgress, IconButton, TextField, Typography } from '@mui/material'
 import Autocomplete from '@mui/material/Autocomplete'
-import { IconRefresh } from '@tabler/icons-react'
+import { IconEdit, IconRefresh } from '@tabler/icons-react'
 
 import type { AsyncInputProps } from '@/atoms'
 import type { NodeOption } from '@/core/types'
@@ -31,7 +31,10 @@ function buildAsyncParams(
 function AsyncOptionsInput({ inputParam, value, disabled, onChange, nodeName, inputValues }: AsyncInputProps) {
     const isCredential = !!inputParam.credentialNames?.length
     const [createDialogOpen, setCreateDialogOpen] = useState(false)
+    const [editDialogOpen, setEditDialogOpen] = useState(false)
     const [reloadKey, setReloadKey] = useState(0)
+
+    const selectedCredentialId = isCredential && typeof value === 'string' && value ? value : null
 
     const handleCreated = useCallback(
         (newCredentialId: string) => {
@@ -45,25 +48,50 @@ function AsyncOptionsInput({ inputParam, value, disabled, onChange, nodeName, in
         [onChange]
     )
 
+    const handleEdited = useCallback(
+        (credentialId: string) => {
+            setEditDialogOpen(false)
+            onChange(credentialId)
+            setReloadKey((k) => k + 1)
+        },
+        [onChange]
+    )
+
     return (
         <>
-            <AsyncOptionsDropdown
-                key={reloadKey}
-                inputParam={inputParam}
-                value={value}
-                disabled={disabled}
-                onChange={onChange}
-                nodeName={nodeName}
-                inputValues={inputValues}
-                isCredential={isCredential}
-                onCreateNew={() => setCreateDialogOpen(true)}
-            />
+            <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', mt: 1 }}>
+                <AsyncOptionsDropdown
+                    key={reloadKey}
+                    inputParam={inputParam}
+                    value={value}
+                    disabled={disabled}
+                    onChange={onChange}
+                    nodeName={nodeName}
+                    inputValues={inputValues}
+                    isCredential={isCredential}
+                    onCreateNew={() => setCreateDialogOpen(true)}
+                />
+                {selectedCredentialId && (
+                    <IconButton title='Edit Credential' color='primary' size='small' onClick={() => setEditDialogOpen(true)}>
+                        <IconEdit size={18} />
+                    </IconButton>
+                )}
+            </Box>
             {isCredential && (
                 <CreateCredentialDialog
                     open={createDialogOpen}
                     credentialNames={inputParam.credentialNames!}
                     onClose={() => setCreateDialogOpen(false)}
                     onCreated={handleCreated}
+                />
+            )}
+            {isCredential && selectedCredentialId && (
+                <CreateCredentialDialog
+                    open={editDialogOpen}
+                    credentialNames={inputParam.credentialNames!}
+                    onClose={() => setEditDialogOpen(false)}
+                    onCreated={handleEdited}
+                    editCredentialId={selectedCredentialId}
                 />
             )}
         </>
@@ -123,7 +151,7 @@ function AsyncOptionsDropdown({
             }}
             loading={loading}
             noOptionsText={loading ? 'Loading…' : 'No options available'}
-            sx={{ mt: 1 }}
+            sx={{ flexGrow: 1 }}
             renderOption={(props, option) => (
                 <Box component='li' {...props} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     {option.name === CREATE_NEW_SENTINEL ? (

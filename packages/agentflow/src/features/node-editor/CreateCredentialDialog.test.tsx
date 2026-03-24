@@ -54,11 +54,15 @@ jest.mock('@/atoms/Dropdown', () => ({
 
 const mockGetComponentCredentialSchema = jest.fn()
 const mockCreateCredential = jest.fn()
+const mockGetCredentialById = jest.fn()
+const mockUpdateCredential = jest.fn()
 
 const mockApiContext = {
     credentialsApi: {
         getComponentCredentialSchema: mockGetComponentCredentialSchema,
-        createCredential: mockCreateCredential
+        createCredential: mockCreateCredential,
+        getCredentialById: mockGetCredentialById,
+        updateCredential: mockUpdateCredential
     },
     apiBaseUrl: 'http://localhost:3000'
 }

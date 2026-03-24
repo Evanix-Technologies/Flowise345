@@ -37,6 +37,22 @@ export function bindCredentialsApi(client: AxiosInstance) {
         createCredential: async (body: CreateCredentialBody): Promise<Credential> => {
             const response = await client.post('/credentials', body)
             return response.data
+        },
+
+        /**
+         * Get a specific credential by ID (includes plainDataObj for editing).
+         */
+        getCredentialById: async (id: string): Promise<Credential & { plainDataObj?: Record<string, unknown> }> => {
+            const response = await client.get(`/credentials/${id}`)
+            return response.data
+        },
+
+        /**
+         * Update an existing credential.
+         */
+        updateCredential: async (id: string, body: CreateCredentialBody): Promise<Credential> => {
+            const response = await client.put(`/credentials/${id}`, body)
+            return response.data
         }
     }
 }

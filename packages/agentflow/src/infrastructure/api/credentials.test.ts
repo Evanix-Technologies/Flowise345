@@ -4,7 +4,8 @@ import { bindCredentialsApi } from './credentials'
 
 const mockClient = {
     get: jest.fn(),
-    post: jest.fn()
+    post: jest.fn(),
+    put: jest.fn()
 } as unknown as jest.Mocked<AxiosInstance>
 
 beforeEach(() => {
@@ -49,5 +50,24 @@ describe('bindCredentialsApi', () => {
         const result = await api.createCredential(body)
         expect(mockClient.post).toHaveBeenCalledWith('/credentials', body)
         expect(result).toEqual(mockCreated)
+    })
+
+    it('getCredentialById calls GET /credentials/:id', async () => {
+        const mockCredential = { id: 'cred-1', name: 'My Key', credentialName: 'openAIApi', plainDataObj: { apiKey: 'sk-test' } }
+        ;(mockClient.get as jest.Mock).mockResolvedValue({ data: mockCredential })
+
+        const result = await api.getCredentialById('cred-1')
+        expect(mockClient.get).toHaveBeenCalledWith('/credentials/cred-1')
+        expect(result).toEqual(mockCredential)
+    })
+
+    it('updateCredential calls PUT /credentials/:id with body', async () => {
+        const body = { name: 'Updated Key', credentialName: 'openAIApi', plainDataObj: { apiKey: 'sk-new' } }
+        const mockUpdated = { id: 'cred-1', ...body }
+        ;(mockClient.put as jest.Mock).mockResolvedValue({ data: mockUpdated })
+
+        const result = await api.updateCredential('cred-1', body)
+        expect(mockClient.put).toHaveBeenCalledWith('/credentials/cred-1', body)
+        expect(result).toEqual(mockUpdated)
     })
 })
