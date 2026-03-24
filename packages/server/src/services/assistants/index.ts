@@ -20,6 +20,20 @@ import { ASSISTANT_PROMPT_GENERATOR } from '../../utils/prompt'
 import { checkUsageLimit } from '../../utils/quotaUsage'
 import nodesService from '../nodes'
 
+function applyAssistantCreateFields(entity: Assistant, body: any): void {
+    entity.details = body.details
+    entity.credential = body.credential
+    entity.iconSrc = body.iconSrc
+    entity.type = body.type
+    entity.workspaceId = body.workspaceId
+}
+
+function applyAssistantUpdateFields(entity: Assistant, details: string, body: any): void {
+    entity.details = details
+    entity.credential = body.credential
+    entity.iconSrc = body.iconSrc
+}
+
 const createAssistant = async (requestBody: any, orgId: string): Promise<Assistant> => {
     try {
         const appServer = getRunningExpressApp()
@@ -30,7 +44,7 @@ const createAssistant = async (requestBody: any, orgId: string): Promise<Assista
 
         if (requestBody.type === 'CUSTOM') {
             const newAssistant = new Assistant()
-            Object.assign(newAssistant, requestBody)
+            applyAssistantCreateFields(newAssistant, requestBody)
 
             const assistant = appServer.AppDataSource.getRepository(Assistant).create(newAssistant)
             const dbResponse = await appServer.AppDataSource.getRepository(Assistant).save(assistant)
@@ -135,7 +149,7 @@ const createAssistant = async (requestBody: any, orgId: string): Promise<Assista
             throw new InternalFlowiseError(StatusCodes.INTERNAL_SERVER_ERROR, `Error creating new assistant - ${getErrorMessage(error)}`)
         }
         const newAssistant = new Assistant()
-        Object.assign(newAssistant, requestBody)
+        applyAssistantCreateFields(newAssistant, requestBody)
 
         const assistant = appServer.AppDataSource.getRepository(Assistant).create(newAssistant)
         const dbResponse = await appServer.AppDataSource.getRepository(Assistant).save(assistant)
@@ -298,11 +312,7 @@ const updateAssistant = async (assistantId: string, requestBody: any, workspaceI
         }
 
         if (assistant.type === 'CUSTOM') {
-            const body = requestBody
-            const updateAssistant = new Assistant()
-            Object.assign(updateAssistant, body)
-
-            appServer.AppDataSource.getRepository(Assistant).merge(assistant, updateAssistant)
+            applyAssistantUpdateFields(assistant, requestBody.details, requestBody)
             const dbResponse = await appServer.AppDataSource.getRepository(Assistant).save(assistant)
             return dbResponse
         }
@@ -376,11 +386,7 @@ const updateAssistant = async (assistantId: string, requestBody: any, workspaceI
             }
             if (savedToolResources) newAssistantDetails.tool_resources = savedToolResources
 
-            const updateAssistant = new Assistant()
-            body.details = JSON.stringify(newAssistantDetails)
-            Object.assign(updateAssistant, body)
-
-            appServer.AppDataSource.getRepository(Assistant).merge(assistant, updateAssistant)
+            applyAssistantUpdateFields(assistant, JSON.stringify(newAssistantDetails), body)
             const dbResponse = await appServer.AppDataSource.getRepository(Assistant).save(assistant)
             return dbResponse
         } catch (error) {
