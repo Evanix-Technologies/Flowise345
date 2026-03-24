@@ -8,7 +8,9 @@ import { CreateCredentialDialog } from './CreateCredentialDialog'
 
 jest.mock('@tabler/icons-react', () => ({
     IconAlertTriangle: () => <span data-testid='icon-alert-triangle' />,
-    IconArrowsMaximize: () => <span data-testid='icon-expand' />
+    IconArrowsMaximize: () => <span data-testid='icon-expand' />,
+    IconSearch: () => <span data-testid='icon-search' />,
+    IconX: () => <span data-testid='icon-x' />
 }))
 
 jest.mock('html-react-parser', () => ({
@@ -282,7 +284,7 @@ describe('CreateCredentialDialog – multiple credential types', () => {
         render(<CreateCredentialDialog {...defaultProps} credentialNames={['openAIApi', 'awsApi']} />)
 
         await waitFor(() => {
-            expect(screen.getByText('Select Credential Type')).toBeInTheDocument()
+            expect(screen.getByText('Add New Credential')).toBeInTheDocument()
             expect(screen.getByText('OpenAI API')).toBeInTheDocument()
             expect(screen.getByText('AWS security credentials')).toBeInTheDocument()
         })

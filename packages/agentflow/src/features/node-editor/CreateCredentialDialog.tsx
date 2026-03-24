@@ -17,6 +17,7 @@ import { useTheme } from '@mui/material/styles'
 import { IconAlertTriangle, IconArrowsMaximize } from '@tabler/icons-react'
 import parser from 'html-react-parser'
 
+import { CredentialTypeSelector } from '@/atoms/CredentialTypeSelector'
 import { Dropdown } from '@/atoms/Dropdown'
 import { JsonInput } from '@/atoms/JsonInput'
 import { SwitchInput } from '@/atoms/SwitchInput'
@@ -173,8 +174,8 @@ export function CreateCredentialDialog({ open, credentialNames, onClose, onCreat
     const showSelection = !loading && !selectedSchema && schemas.length > 1
 
     return (
-        <Dialog open={open} onClose={handleClose} fullWidth maxWidth='sm'>
-            <DialogTitle sx={{ fontSize: '1rem' }}>
+        <Dialog open={open} onClose={handleClose} fullWidth maxWidth={showSelection ? 'md' : 'sm'}>
+            <DialogTitle sx={{ fontSize: '1rem', p: 3, pb: 0 }}>
                 {selectedSchema ? (
                     <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center' }}>
                         <div
@@ -201,10 +202,12 @@ export function CreateCredentialDialog({ open, credentialNames, onClose, onCreat
                         {selectedSchema.label}
                     </div>
                 ) : (
-                    'Select Credential Type'
+                    'Add New Credential'
                 )}
             </DialogTitle>
-            <DialogContent>
+            <DialogContent
+                sx={showSelection ? { display: 'flex', flexDirection: 'column', gap: 2, maxHeight: '75vh', px: 3, pb: 3 } : undefined}
+            >
                 {loading && (
                     <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
                         <CircularProgress />
@@ -217,20 +220,7 @@ export function CreateCredentialDialog({ open, credentialNames, onClose, onCreat
                     </Alert>
                 )}
 
-                {showSelection && (
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                        {schemas.map((schema) => (
-                            <Button
-                                key={schema.name}
-                                variant='outlined'
-                                onClick={() => selectSchema(schema)}
-                                sx={{ justifyContent: 'flex-start', textTransform: 'none' }}
-                            >
-                                {schema.label}
-                            </Button>
-                        ))}
-                    </Box>
-                )}
+                {showSelection && <CredentialTypeSelector schemas={schemas} apiBaseUrl={apiBaseUrl} onSelect={selectSchema} />}
 
                 {selectedSchema && (
                     <>

@@ -2,6 +2,7 @@
 export { ArrayInput, type ArrayInputProps } from './ArrayInput'
 export { CodeInput, type CodeInputProps } from './CodeInput'
 export { ConditionBuilder, type ConditionBuilderProps } from './ConditionBuilder'
+export { CredentialTypeSelector, type CredentialTypeSelectorProps } from './CredentialTypeSelector'
 export { Dropdown, type DropdownOption, type DropdownProps } from './Dropdown'
 export { ExpandTextDialog, type ExpandTextDialogProps } from './ExpandTextDialog'
 export { JsonInput, type JsonInputProps } from './JsonInput'
