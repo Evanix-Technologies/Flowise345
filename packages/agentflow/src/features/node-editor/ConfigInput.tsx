@@ -38,7 +38,9 @@ function initializeDefaults(params: InputParam[]): Record<string, unknown> {
     return defaults
 }
 
-/** Read the current selection value from parent data, handling array context. */
+/** Read the current selection value from parent data, handling array context.
+ *  When data is already scoped to the array item (ArrayInput passes itemData),
+ *  the parent array won't exist in data.inputValues — fall back to direct read. */
 function readCurrentValue(
     data: NodeData,
     paramName: string,
@@ -50,12 +52,14 @@ function readCurrentValue(
         if (Array.isArray(arr) && arr[arrayIndex]) {
             return arr[arrayIndex][paramName] as string | undefined
         }
-        return undefined
+        // data may already be scoped to the array item (via ArrayInput's itemData)
+        return data.inputValues?.[paramName] as string | undefined
     }
     return data.inputValues?.[paramName] as string | undefined
 }
 
-/** Read existing config from parent data, handling array context. */
+/** Read existing config from parent data, handling array context.
+ *  Falls back to direct read when data is already item-scoped. */
 function readExistingConfig(
     data: NodeData,
     paramName: string,
@@ -68,7 +72,8 @@ function readExistingConfig(
         if (Array.isArray(arr) && arr[arrayIndex]) {
             return arr[arrayIndex][configKey] as Record<string, unknown> | undefined
         }
-        return undefined
+        // data may already be scoped to the array item (via ArrayInput's itemData)
+        return data.inputValues?.[configKey] as Record<string, unknown> | undefined
     }
     return data.inputValues?.[configKey] as Record<string, unknown> | undefined
 }
