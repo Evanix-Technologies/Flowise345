@@ -33,16 +33,19 @@ function AsyncOptionsInput({ inputParam, value, disabled, onChange, nodeName, in
     const [createDialogOpen, setCreateDialogOpen] = useState(false)
     const [editDialogOpen, setEditDialogOpen] = useState(false)
     const [reloadKey, setReloadKey] = useState(0)
+    // Holds the credential ID that was just created/edited. Passed directly to
+    // the remounted AsyncOptionsDropdown so it doesn't depend on the parent
+    // state cascade (which may not have flushed yet when inside ConfigInput).
+    const [pendingValue, setPendingValue] = useState<string | null>(null)
 
-    const selectedCredentialId = isCredential && typeof value === 'string' && value ? value : null
+    const effectiveValue = pendingValue ?? value
+    const selectedCredentialId = isCredential && typeof effectiveValue === 'string' && effectiveValue ? effectiveValue : null
 
     const handleCreated = useCallback(
         (newCredentialId: string) => {
             setCreateDialogOpen(false)
             onChange(newCredentialId)
-            // Changing reloadKey forces AsyncOptionsDropdown to remount, which
-            // re-runs useAsyncOptions and fetches fresh options including the
-            // newly created credential — matching original Flowise behaviour.
+            setPendingValue(newCredentialId)
             setReloadKey((k) => k + 1)
         },
         [onChange]
@@ -52,6 +55,7 @@ function AsyncOptionsInput({ inputParam, value, disabled, onChange, nodeName, in
         (credentialId: string) => {
             setEditDialogOpen(false)
             onChange(credentialId)
+            setPendingValue(credentialId)
             setReloadKey((k) => k + 1)
         },
         [onChange]
@@ -63,9 +67,12 @@ function AsyncOptionsInput({ inputParam, value, disabled, onChange, nodeName, in
                 <AsyncOptionsDropdown
                     key={reloadKey}
                     inputParam={inputParam}
-                    value={value}
+                    value={pendingValue ?? value}
                     disabled={disabled}
-                    onChange={onChange}
+                    onChange={(v) => {
+                        setPendingValue(null)
+                        onChange(v)
+                    }}
                     nodeName={nodeName}
                     inputValues={inputValues}
                     isCredential={isCredential}

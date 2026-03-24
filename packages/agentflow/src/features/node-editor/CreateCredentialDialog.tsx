@@ -170,6 +170,14 @@ export function CreateCredentialDialog({ open, credentialNames, onClose, onCreat
         if (!submitting) onClose()
     }, [submitting, onClose])
 
+    // Check if all required fields have values
+    const hasEmptyRequiredFields = selectedSchema?.inputs
+        ?.filter((input) => !input.hidden && !input.optional)
+        .some((input) => {
+            const val = formValues[input.name]
+            return val === undefined || val === null || val === ''
+        })
+
     // Schema selection step (multiple credential types)
     const showSelection = !loading && !selectedSchema && schemas.length > 1
 
@@ -259,7 +267,11 @@ export function CreateCredentialDialog({ open, credentialNames, onClose, onCreat
                     Cancel
                 </Button>
                 {selectedSchema && (
-                    <Button variant='contained' onClick={handleSubmit} disabled={!credentialName.trim() || submitting}>
+                    <Button
+                        variant='contained'
+                        onClick={handleSubmit}
+                        disabled={!credentialName.trim() || hasEmptyRequiredFields || submitting}
+                    >
                         {submitting ? (isEditMode ? 'Saving...' : 'Adding...') : isEditMode ? 'Save' : 'Add'}
                     </Button>
                 )}

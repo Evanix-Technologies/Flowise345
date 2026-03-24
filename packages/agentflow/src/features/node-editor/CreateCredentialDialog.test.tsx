@@ -212,12 +212,24 @@ describe('CreateCredentialDialog', () => {
         })
     })
 
-    it('Add button is enabled when credential name is filled', async () => {
+    it('Add button is disabled when required fields are empty', async () => {
+        render(<CreateCredentialDialog {...defaultProps} />)
+
+        await waitFor(() => screen.getByPlaceholderText('OpenAI API'))
+
+        // Fill credential name but leave required field empty
+        fireEvent.change(screen.getByPlaceholderText('OpenAI API'), { target: { value: 'My Key' } })
+
+        expect(screen.getByText('Add')).toBeDisabled()
+    })
+
+    it('Add button is enabled when credential name and required fields are filled', async () => {
         render(<CreateCredentialDialog {...defaultProps} />)
 
         await waitFor(() => screen.getByPlaceholderText('OpenAI API'))
 
         fireEvent.change(screen.getByPlaceholderText('OpenAI API'), { target: { value: 'My Key' } })
+        fireEvent.change(screen.getByDisplayValue(''), { target: { value: 'sk-test-key' } })
 
         expect(screen.getByText('Add')).not.toBeDisabled()
     })
@@ -228,6 +240,7 @@ describe('CreateCredentialDialog', () => {
         await waitFor(() => screen.getByPlaceholderText('OpenAI API'))
 
         fireEvent.change(screen.getByPlaceholderText('OpenAI API'), { target: { value: 'My OpenAI Key' } })
+        fireEvent.change(screen.getByDisplayValue(''), { target: { value: 'sk-test-key' } })
 
         await act(async () => {
             fireEvent.click(screen.getByText('Add'))
@@ -236,7 +249,7 @@ describe('CreateCredentialDialog', () => {
         expect(mockCreateCredential).toHaveBeenCalledWith({
             name: 'My OpenAI Key',
             credentialName: 'openAIApi',
-            plainDataObj: { openAIApiKey: '' }
+            plainDataObj: { openAIApiKey: 'sk-test-key' }
         })
         expect(defaultProps.onCreated).toHaveBeenCalledWith('new-cred-123')
     })
@@ -248,6 +261,7 @@ describe('CreateCredentialDialog', () => {
         await waitFor(() => screen.getByPlaceholderText('OpenAI API'))
 
         fireEvent.change(screen.getByPlaceholderText('OpenAI API'), { target: { value: 'My Key' } })
+        fireEvent.change(screen.getByDisplayValue(''), { target: { value: 'sk-test-key' } })
 
         await act(async () => {
             fireEvent.click(screen.getByText('Add'))
