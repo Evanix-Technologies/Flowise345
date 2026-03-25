@@ -106,7 +106,7 @@ export function Dropdown({
                         {option.imageSrc && (
                             <img
                                 src={option.imageSrc}
-                                alt={option.description}
+                                alt={option.label}
                                 style={{
                                     width: 30,
                                     height: 30,
