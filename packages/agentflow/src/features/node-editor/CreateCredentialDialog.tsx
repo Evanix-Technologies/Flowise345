@@ -65,7 +65,7 @@ export function CreateCredentialDialog({ open, credentialNames, onClose, onCreat
         const defaults: Record<string, unknown> = {}
         for (const input of schema.inputs ?? []) {
             if (input.hidden) continue
-            defaults[input.name] = getDefaultValueForType(input.type, input.options, input.default)
+            defaults[input.name] = getDefaultValueForType(input)
         }
         setFormValues(defaults)
     }, [])
