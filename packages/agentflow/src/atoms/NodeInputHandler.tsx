@@ -471,12 +471,12 @@ export function NodeInputHandler({
                             </Typography>
                             <div style={{ flexGrow: 1 }} />
                             {showVariableButton && (
-                                <Tooltip title='Select variable'>
+                                <Tooltip title={suggestionItems?.length ? 'Type {{ to select variables' : 'Select variable'}>
                                     <IconButton
                                         size='small'
                                         sx={{ height: 25, width: 25 }}
                                         disabled={disabled}
-                                        onClick={(e) => setVariableAnchorEl(e.currentTarget)}
+                                        onClick={(e) => !suggestionItems?.length && setVariableAnchorEl(e.currentTarget)}
                                     >
                                         <IconVariable size={20} style={{ color: theme.palette.info.main }} />
                                     </IconButton>

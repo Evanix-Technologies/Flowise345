@@ -62,7 +62,7 @@ describe('createSuggestionConfig', () => {
                 decorationNode: null,
                 clientRect: mockClientRect,
                 ...overrides
-            }
+            } as unknown as Parameters<NonNullable<ReturnType<typeof config.render>['onStart']>>[0]
         }
 
         beforeEach(() => {
@@ -82,7 +82,7 @@ describe('createSuggestionConfig', () => {
             lifecycle.onStart!(makeProps())
 
             const renderer = (ReactRenderer as jest.Mock).mock.results[0].value
-            const tippyInstance = (tippy as jest.Mock).mock.results[0].value[0]
+            const tippyInstance = (tippy as unknown as jest.Mock).mock.results[0].value[0]
 
             lifecycle.onUpdate!(makeProps())
             expect(renderer.updateProps).toHaveBeenCalled()
@@ -93,7 +93,7 @@ describe('createSuggestionConfig', () => {
             const lifecycle = config.render()
             lifecycle.onStart!(makeProps())
 
-            const tippyInstance = (tippy as jest.Mock).mock.results[0].value[0]
+            const tippyInstance = (tippy as unknown as jest.Mock).mock.results[0].value[0]
             const result = lifecycle.onKeyDown!({
                 view: {} as never,
                 event: new KeyboardEvent('keydown', { key: 'Escape' }),
@@ -141,9 +141,9 @@ describe('createSuggestionConfig', () => {
             lifecycle.onStart!(makeProps())
 
             const renderer = (ReactRenderer as jest.Mock).mock.results[0].value
-            const tippyInstance = (tippy as jest.Mock).mock.results[0].value[0]
+            const tippyInstance = (tippy as unknown as jest.Mock).mock.results[0].value[0]
 
-            lifecycle.onExit!(makeProps())
+            lifecycle.onExit!()
 
             expect(renderer.destroy).toHaveBeenCalled()
             expect(tippyInstance.destroy).toHaveBeenCalled()
@@ -154,7 +154,7 @@ describe('createSuggestionConfig', () => {
             lifecycle.onStart!(makeProps({ clientRect: null }))
 
             // Verify tippy was called — the fallback is used inside getReferenceClientRect
-            const tippyConfig = (tippy as jest.Mock).mock.calls[0][1]
+            const tippyConfig = (tippy as unknown as jest.Mock).mock.calls[0][1]
             const rect = tippyConfig.getReferenceClientRect()
             // Should return the fallback DOMRect (all zeros)
             expect(rect.x).toBe(0)

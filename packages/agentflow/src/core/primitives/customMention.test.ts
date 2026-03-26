@@ -99,8 +99,7 @@ describe('CustomMention extension config', () => {
 
         it('paste rule has a global regex for {{...}} pattern', () => {
             const rules = addPasteRules.call({ name: 'mention' })
-            const config = rules[0].config as { find: RegExp }
-            expect(config.find).toEqual(/\{\{([^{}]+)\}\}/g)
+            expect(rules[0].find).toEqual(/\{\{([^{}]+)\}\}/g)
         })
     })
 

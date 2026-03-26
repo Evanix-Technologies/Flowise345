@@ -5,7 +5,6 @@ import { styled } from '@mui/material/styles'
 import { mergeAttributes } from '@tiptap/core'
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
 import Placeholder from '@tiptap/extension-placeholder'
-import { Markdown } from '@tiptap/markdown'
 import { EditorContent, useEditor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import javascript from 'highlight.js/lib/languages/javascript'
@@ -27,14 +26,6 @@ lowlight.register('javascript', javascript)
 lowlight.register('json', json)
 lowlight.register('python', python)
 lowlight.register('typescript', typescript)
-
-/**
- * Detect if content is legacy HTML (from old getHTML() storage) vs markdown.
- * Matches the isHtmlContent check in packages/ui/src/ui-component/input/RichInput.jsx:20-23.
- */
-const isHtmlContent = (content: string): boolean => {
-    return /<(?:p|div|span|h[1-6]|ul|ol|li|br|code|pre|blockquote|table|strong|em)\b/i.test(content)
-}
 
 export interface VariableInputProps {
     value: string
@@ -143,16 +134,9 @@ const StyledEditorContent = styled(EditorContent, {
  * that renders as `{{variableName}}` in the output text.
  *
  * Serialization matches the UI's RichInput behavior:
- * - Multiline fields (rows > 0): markdown via getMarkdown() — enables full round-tripping
- *   with the original Flowise UI which also uses markdown for multiline fields
- * - Single-line fields (no rows): HTML via getHTML()
- *
  * This is the agentflow equivalent of the UI package's RichInput component.
  */
 export function VariableInput({ value, onChange, placeholder, disabled = false, rows, suggestionItems }: VariableInputProps) {
-    // Multiline fields use markdown serialization to match UI's RichInput behavior
-    const useMarkdown = !!rows
-
     const onChangeRef = useRef(onChange)
     useEffect(() => {
         onChangeRef.current = onChange
@@ -165,10 +149,8 @@ export function VariableInput({ value, onChange, placeholder, disabled = false, 
 
     const extensions = useMemo(
         () => [
-            Markdown,
             StarterKit.configure({
-                codeBlock: false,
-                ...(!useMarkdown && { link: false })
+                codeBlock: false
             }),
             CodeBlockLowlight.configure({ lowlight, enableTabIndentation: true, tabSize: 2 }),
             ...(placeholder ? [Placeholder.configure({ placeholder })] : []),
@@ -180,7 +162,7 @@ export function VariableInput({ value, onChange, placeholder, disabled = false, 
                           renderHTML({ options, node }: any) {
                               return [
                                   'span',
-                                  mergeAttributes({ class: 'mention' }, options.HTMLAttributes),
+                                  mergeAttributes(this.HTMLAttributes ?? {}, options.HTMLAttributes),
                                   `${options.suggestion?.char ?? '{{'} ${node.attrs.label ?? node.attrs.id} }}`
                               ]
                           },
@@ -190,7 +172,7 @@ export function VariableInput({ value, onChange, placeholder, disabled = false, 
                   ]
                 : [])
         ],
-        [placeholder, suggestionConfig, useMarkdown]
+        [placeholder, suggestionConfig]
     )
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -200,27 +182,18 @@ export function VariableInput({ value, onChange, placeholder, disabled = false, 
         editable: !disabled,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         onUpdate: ({ editor: ed }: any) => {
-            if (useMarkdown) {
-                try {
-                    onChangeRef.current(ed.getMarkdown())
-                } catch {
-                    onChangeRef.current(ed.getHTML())
-                }
-            } else {
-                onChangeRef.current(ed.getHTML())
-            }
+            // Always use HTML serialization. The @tiptap/markdown v3 getMarkdown()
+            // returns empty strings (known issue with the MarkdownManager in v3.20.4).
+            // HTML round-trips correctly because the Mention extension's parseHTML
+            // matches on span[data-type="mention"] with data-id/data-label attributes.
+            onChangeRef.current(ed.getHTML())
         }
     })
 
-    // Load initial content after editor is ready, detecting HTML vs markdown
-    // Matches packages/ui/src/ui-component/input/RichInput.jsx:171-178
+    // Load initial content after editor is ready
     useEffect(() => {
         if (editor && value) {
-            if (!useMarkdown || isHtmlContent(value)) {
-                editor.commands.setContent(value)
-            } else {
-                editor.commands.setContent(value, { contentType: 'markdown' })
-            }
+            editor.commands.setContent(value)
         }
     }, [editor]) // eslint-disable-line react-hooks/exhaustive-deps
 
