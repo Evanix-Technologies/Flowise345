@@ -35,6 +35,11 @@ describe('extractVariables', () => {
         expect(extractVariables('{notAVariable}')).toEqual([])
     })
 
+    it('skips JSON-like content with colons', () => {
+        expect(extractVariables('{{"key": "value"}}')).toEqual([])
+        expect(extractVariables('{{"name": "test"}} and {{question}}')).toEqual(['question'])
+    })
+
     it('does not match nested braces', () => {
         expect(extractVariables('{{{nested}}}')).toEqual(['nested'])
     })

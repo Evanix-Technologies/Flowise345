@@ -1,22 +1,31 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 
-import { Box, Divider, List, ListItemButton, ListItemText, Paper, Popper, Typography } from '@mui/material'
+import { Box, Divider, List, ListItem, ListItemButton, Paper, Typography } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
 import { IconBinaryTree, IconHistory, IconMessageChatbot, IconPaperclip } from '@tabler/icons-react'
 
+/**
+ * Shape of items returned by the TipTap suggestion `items()` callback.
+ * Matches the UI package's SuggestionList item shape.
+ */
 export interface SuggestionItem {
     id: string
+    /** Display label (called `mentionLabel` in the UI package) */
     label: string
     description?: string
     category?: string
 }
 
 export interface SuggestionDropdownProps {
+    /** Filtered suggestion items from TipTap's suggestion plugin */
     items: SuggestionItem[]
-    query: string
-    anchorEl: HTMLElement | null
-    onSelect: (item: SuggestionItem) => void
-    onClose: () => void
+    /** TipTap command to insert the selected mention node */
+    command: (attrs: { id: string; label: string }) => void
+}
+
+/** Ref handle exposed to TipTap's suggestion `onKeyDown` callback. */
+export interface SuggestionDropdownRef {
+    onKeyDown: (args: { event: KeyboardEvent }) => boolean
 }
 
 const CATEGORY_ICON: Record<string, { icon: React.ElementType; color: string }> = {
@@ -28,40 +37,34 @@ const CATEGORY_ICON: Record<string, { icon: React.ElementType; color: string }> 
 const DEFAULT_ICON = { icon: IconPaperclip, color: '#90A4AE' }
 
 /**
- * Autocomplete dropdown for variable suggestions.
- * Filters items by query, groups by category, supports keyboard navigation.
+ * Autocomplete dropdown for TipTap mention suggestions.
+ *
+ * Rendered by TipTap's suggestion plugin via ReactRenderer.
+ * Exposes keyboard navigation via forwardRef + useImperativeHandle
+ * so the suggestion plugin can delegate keystrokes.
+ *
+ * Port of packages/ui/src/ui-component/input/SuggestionList.jsx to TypeScript.
  */
-export function SuggestionDropdown({ items, query, anchorEl, onSelect, onClose }: SuggestionDropdownProps) {
+export const SuggestionDropdown = forwardRef<SuggestionDropdownRef, SuggestionDropdownProps>(({ items, command }, ref) => {
     const theme = useTheme()
     const [selectedIndex, setSelectedIndex] = useState(0)
     const listRef = useRef<HTMLUListElement>(null)
 
-    const filteredItems = useMemo(() => {
-        if (!query) return items
-        const q = query.toLowerCase()
-        return items.filter((item) => item.label.toLowerCase().includes(q) || item.id.toLowerCase().includes(q))
-    }, [items, query])
-
-    // Group filtered items by category
+    // Group items by category
     const grouped = useMemo(() => {
-        const groups: { category: string; items: SuggestionItem[] }[] = []
-        const seen = new Map<string, SuggestionItem[]>()
-        for (const item of filteredItems) {
+        const groups: Record<string, SuggestionItem[]> = {}
+        for (const item of items) {
             const cat = item.category ?? 'Other'
-            if (!seen.has(cat)) {
-                const arr: SuggestionItem[] = []
-                seen.set(cat, arr)
-                groups.push({ category: cat, items: arr })
-            }
-            seen.get(cat)!.push(item)
+            if (!groups[cat]) groups[cat] = []
+            groups[cat].push(item)
         }
         return groups
-    }, [filteredItems])
+    }, [items])
 
-    // Reset selection when filtered items change
+    // Reset selection when items change
     useEffect(() => {
         setSelectedIndex(0)
-    }, [filteredItems.length, query])
+    }, [items])
 
     // Scroll selected item into view
     useEffect(() => {
@@ -71,108 +74,109 @@ export function SuggestionDropdown({ items, query, anchorEl, onSelect, onClose }
         }
     }, [selectedIndex])
 
-    const handleKeyDown = useCallback(
-        (e: KeyboardEvent) => {
-            if (!anchorEl || filteredItems.length === 0) return
+    const selectItem = (index: number) => {
+        if (index >= items.length) return
+        const item = items[index]
+        command({ id: item.id, label: item.label })
+    }
 
-            switch (e.key) {
-                case 'ArrowDown':
-                    e.preventDefault()
-                    setSelectedIndex((prev) => (prev + 1) % filteredItems.length)
-                    break
-                case 'ArrowUp':
-                    e.preventDefault()
-                    setSelectedIndex((prev) => (prev - 1 + filteredItems.length) % filteredItems.length)
-                    break
-                case 'Enter':
-                    e.preventDefault()
-                    e.stopPropagation()
-                    onSelect(filteredItems[selectedIndex])
-                    break
-                case 'Escape':
-                    e.preventDefault()
-                    onClose()
-                    break
+    // Expose keyboard navigation to TipTap's suggestion plugin
+    useImperativeHandle(ref, () => ({
+        onKeyDown: ({ event }) => {
+            if (event.key === 'ArrowUp') {
+                setSelectedIndex((prev) => (prev + items.length - 1) % items.length)
+                return true
             }
-        },
-        [anchorEl, filteredItems, selectedIndex, onSelect, onClose]
-    )
+            if (event.key === 'ArrowDown') {
+                setSelectedIndex((prev) => (prev + 1) % items.length)
+                return true
+            }
+            if (event.key === 'Enter') {
+                selectItem(selectedIndex)
+                return true
+            }
+            return false
+        }
+    }))
 
-    useEffect(() => {
-        document.addEventListener('keydown', handleKeyDown, true)
-        return () => document.removeEventListener('keydown', handleKeyDown, true)
-    }, [handleKeyDown])
-
-    if (!anchorEl || filteredItems.length === 0) return null
-
-    let flatIndex = 0
+    if (items.length === 0) return null
 
     return (
-        <Popper
-            open
-            anchorEl={anchorEl}
-            placement='bottom-start'
-            style={{ zIndex: theme.zIndex.modal + 1 }}
+        <Paper
+            elevation={5}
+            sx={{
+                maxHeight: 300,
+                overflowY: 'auto',
+                zIndex: theme.zIndex.modal + 1
+            }}
             data-testid='suggestion-dropdown'
         >
-            <Paper
-                elevation={8}
-                sx={{
-                    maxHeight: 300,
-                    width: 320,
-                    overflowY: 'auto',
-                    mt: 0.5
-                }}
-            >
-                <List ref={listRef} dense disablePadding>
-                    {grouped.map((group, groupIdx) => {
-                        const style = CATEGORY_ICON[group.category] || DEFAULT_ICON
-                        const Icon = style.icon
+            <List ref={listRef} dense sx={{ overflow: 'hidden', maxWidth: 300 }}>
+                {Object.entries(grouped).map(([category, categoryItems], categoryIndex) => {
+                    const style = CATEGORY_ICON[category] || DEFAULT_ICON
+                    const Icon = style.icon
 
-                        return (
-                            <Box key={group.category}>
-                                {groupIdx > 0 && <Divider />}
+                    return (
+                        <Box key={category}>
+                            {categoryIndex > 0 && <Divider />}
+                            <ListItem
+                                sx={{
+                                    py: 0.5,
+                                    bgcolor: theme.palette.mode === 'dark' ? theme.palette.common.black : theme.palette.grey[50]
+                                }}
+                            >
                                 <Typography
                                     variant='overline'
-                                    sx={{
-                                        px: 2,
-                                        pt: 1,
-                                        pb: 0.5,
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: 0.5,
-                                        color: theme.palette.text.secondary,
-                                        fontSize: '0.65rem'
-                                    }}
+                                    color='text.secondary'
+                                    sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
                                 >
                                     <Icon size={14} color={style.color} />
-                                    {group.category}
+                                    {category}
                                 </Typography>
-                                {group.items.map((item) => {
-                                    const idx = flatIndex++
-                                    const isSelected = idx === selectedIndex
-                                    return (
+                            </ListItem>
+                            {categoryItems.map((item) => {
+                                const itemIndex = items.findIndex((i) => i.id === item.id)
+                                const isSelected = itemIndex === selectedIndex
+                                return (
+                                    <ListItem key={item.id} disablePadding>
                                         <ListItemButton
-                                            key={item.id}
                                             data-selected={isSelected}
                                             selected={isSelected}
-                                            onClick={() => onSelect(item)}
-                                            sx={{ px: 2, py: 0.5 }}
+                                            onClick={() => selectItem(itemIndex)}
+                                            sx={{
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                alignItems: 'flex-start'
+                                            }}
                                         >
-                                            <ListItemText
-                                                primary={item.label}
-                                                secondary={item.description}
-                                                primaryTypographyProps={{ variant: 'body2', fontWeight: isSelected ? 600 : 400 }}
-                                                secondaryTypographyProps={{ variant: 'caption', noWrap: true }}
-                                            />
+                                            <Typography variant='body2' sx={{ fontWeight: isSelected ? 600 : 500 }}>
+                                                {item.label}
+                                            </Typography>
+                                            {item.description && (
+                                                <Typography
+                                                    variant='caption'
+                                                    color='text.secondary'
+                                                    sx={{
+                                                        display: '-webkit-box',
+                                                        WebkitLineClamp: 2,
+                                                        WebkitBoxOrient: 'vertical',
+                                                        overflow: 'hidden',
+                                                        textOverflow: 'ellipsis'
+                                                    }}
+                                                >
+                                                    {item.description}
+                                                </Typography>
+                                            )}
                                         </ListItemButton>
-                                    )
-                                })}
-                            </Box>
-                        )
-                    })}
-                </List>
-            </Paper>
-        </Popper>
+                                    </ListItem>
+                                )
+                            })}
+                        </Box>
+                    )
+                })}
+            </List>
+        </Paper>
     )
-}
+})
+
+SuggestionDropdown.displayName = 'SuggestionDropdown'

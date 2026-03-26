@@ -1,7 +1,9 @@
-import { createTheme, ThemeProvider } from '@mui/material/styles'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { createRef, type Ref } from 'react'
 
-import { SuggestionDropdown, type SuggestionItem } from './SuggestionDropdown'
+import { createTheme, ThemeProvider } from '@mui/material/styles'
+import { act, fireEvent, render, screen } from '@testing-library/react'
+
+import { SuggestionDropdown, type SuggestionDropdownRef, type SuggestionItem } from './SuggestionDropdown'
 
 const theme = createTheme()
 
@@ -12,21 +14,16 @@ const ITEMS: SuggestionItem[] = [
     { id: '$flow.state.count', label: '$flow.state.count', description: 'State variable', category: 'Flow State' }
 ]
 
-let anchor: HTMLDivElement
-
-function renderDropdown(props: Partial<React.ComponentProps<typeof SuggestionDropdown>> = {}) {
+function renderDropdown(props: Partial<React.ComponentProps<typeof SuggestionDropdown>> = {}, ref?: Ref<SuggestionDropdownRef>) {
     const defaultProps = {
         items: ITEMS,
-        query: '',
-        anchorEl: anchor,
-        onSelect: jest.fn(),
-        onClose: jest.fn(),
+        command: jest.fn(),
         ...props
     }
 
     const result = render(
         <ThemeProvider theme={theme}>
-            <SuggestionDropdown {...defaultProps} />
+            <SuggestionDropdown ref={ref} {...defaultProps} />
         </ThemeProvider>
     )
 
@@ -34,15 +31,6 @@ function renderDropdown(props: Partial<React.ComponentProps<typeof SuggestionDro
 }
 
 describe('SuggestionDropdown', () => {
-    beforeEach(() => {
-        anchor = document.createElement('div')
-        document.body.appendChild(anchor)
-    })
-
-    afterEach(() => {
-        if (anchor.parentNode) anchor.parentNode.removeChild(anchor)
-    })
-
     it('renders grouped items by category', () => {
         renderDropdown()
 
@@ -53,67 +41,18 @@ describe('SuggestionDropdown', () => {
         expect(screen.getByText('LLM Node')).toBeInTheDocument()
     })
 
-    it('filters items by query', () => {
-        renderDropdown({ query: 'que' })
-
-        expect(screen.getByText('question')).toBeInTheDocument()
-        expect(screen.queryByText('chat_history')).not.toBeInTheDocument()
-        expect(screen.queryByText('LLM Node')).not.toBeInTheDocument()
-    })
-
-    it('renders nothing when no items match query', () => {
-        renderDropdown({ query: 'zzz_nomatch' })
+    it('renders nothing when items array is empty', () => {
+        renderDropdown({ items: [] })
 
         expect(screen.queryByTestId('suggestion-dropdown')).not.toBeInTheDocument()
     })
 
-    it('renders nothing when anchorEl is null', () => {
-        renderDropdown({ anchorEl: null })
-
-        expect(screen.queryByTestId('suggestion-dropdown')).not.toBeInTheDocument()
-    })
-
-    it('calls onSelect when an item is clicked', () => {
-        const { onSelect } = renderDropdown()
+    it('calls command with correct attrs when item is clicked', () => {
+        const { command } = renderDropdown()
 
         fireEvent.click(screen.getByText('question'))
 
-        expect(onSelect).toHaveBeenCalledWith(ITEMS[0])
-    })
-
-    it('selects item with Enter key', () => {
-        const { onSelect } = renderDropdown()
-
-        fireEvent.keyDown(document, { key: 'Enter' })
-
-        expect(onSelect).toHaveBeenCalledWith(ITEMS[0])
-    })
-
-    it('navigates with ArrowDown and selects', () => {
-        const { onSelect } = renderDropdown()
-
-        fireEvent.keyDown(document, { key: 'ArrowDown' })
-        fireEvent.keyDown(document, { key: 'Enter' })
-
-        expect(onSelect).toHaveBeenCalledWith(ITEMS[1])
-    })
-
-    it('navigates with ArrowUp (wraps around)', () => {
-        const { onSelect } = renderDropdown()
-
-        // ArrowUp from index 0 wraps to last item
-        fireEvent.keyDown(document, { key: 'ArrowUp' })
-        fireEvent.keyDown(document, { key: 'Enter' })
-
-        expect(onSelect).toHaveBeenCalledWith(ITEMS[ITEMS.length - 1])
-    })
-
-    it('calls onClose on Escape', () => {
-        const { onClose } = renderDropdown()
-
-        fireEvent.keyDown(document, { key: 'Escape' })
-
-        expect(onClose).toHaveBeenCalled()
+        expect(command).toHaveBeenCalledWith({ id: 'question', label: 'question' })
     })
 
     it('shows descriptions for items', () => {
@@ -121,5 +60,55 @@ describe('SuggestionDropdown', () => {
 
         expect(screen.getByText("User's question")).toBeInTheDocument()
         expect(screen.getByText('Output from LLM')).toBeInTheDocument()
+    })
+
+    it('exposes onKeyDown via ref for Enter selection', () => {
+        const ref = createRef<SuggestionDropdownRef>()
+        const { command } = renderDropdown({}, ref)
+
+        // Enter selects first item (index 0)
+        const handled = ref.current!.onKeyDown({ event: new KeyboardEvent('keydown', { key: 'Enter' }) })
+
+        expect(handled).toBe(true)
+        expect(command).toHaveBeenCalledWith({ id: 'question', label: 'question' })
+    })
+
+    it('exposes onKeyDown via ref for ArrowDown navigation', () => {
+        const ref = createRef<SuggestionDropdownRef>()
+        const { command } = renderDropdown({}, ref)
+
+        // ArrowDown moves to index 1 — wrap in act() so React flushes state
+        act(() => {
+            ref.current!.onKeyDown({ event: new KeyboardEvent('keydown', { key: 'ArrowDown' }) })
+        })
+        // Enter selects index 1
+        act(() => {
+            ref.current!.onKeyDown({ event: new KeyboardEvent('keydown', { key: 'Enter' }) })
+        })
+
+        expect(command).toHaveBeenCalledWith({ id: 'chat_history', label: 'chat_history' })
+    })
+
+    it('exposes onKeyDown via ref for ArrowUp navigation (wraps around)', () => {
+        const ref = createRef<SuggestionDropdownRef>()
+        const { command } = renderDropdown({}, ref)
+
+        // ArrowUp from index 0 wraps to last — wrap in act() so React flushes state
+        act(() => {
+            ref.current!.onKeyDown({ event: new KeyboardEvent('keydown', { key: 'ArrowUp' }) })
+        })
+        act(() => {
+            ref.current!.onKeyDown({ event: new KeyboardEvent('keydown', { key: 'Enter' }) })
+        })
+
+        expect(command).toHaveBeenCalledWith({ id: '$flow.state.count', label: '$flow.state.count' })
+    })
+
+    it('returns false for unhandled keys', () => {
+        const ref = createRef<SuggestionDropdownRef>()
+        renderDropdown({}, ref)
+
+        const handled = ref.current!.onKeyDown({ event: new KeyboardEvent('keydown', { key: 'a' }) })
+        expect(handled).toBe(false)
     })
 })

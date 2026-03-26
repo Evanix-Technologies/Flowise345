@@ -19,7 +19,11 @@ export function extractVariables(text: string): string[] {
     // Reset lastIndex for safety (global regex)
     VARIABLE_REGEX.lastIndex = 0
     while ((match = VARIABLE_REGEX.exec(text)) !== null) {
-        matches.push(match[1].trim())
+        const inside = match[1].trim()
+        // Skip JSON-like content (e.g. {{"key": "value"}})
+        if (!inside.includes(':')) {
+            matches.push(inside)
+        }
     }
     return matches
 }
