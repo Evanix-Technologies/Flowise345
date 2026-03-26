@@ -1,6 +1,7 @@
 // SSOBase.ts
 import express from 'express'
 import passport from 'passport'
+import logger from '../../utils/logger'
 import { IAssignedWorkspace, LoggedInUser } from '../Interface.Enterprise'
 import { getRunningExpressApp } from '../../utils/getRunningExpressApp'
 import { UserErrorMessage, UserService } from '../services/user.service'
@@ -46,6 +47,7 @@ abstract class SSOBase {
         let queryRunner
         const ssoProviderName = this.getProviderName()
         try {
+            logger.debug(`[${ssoProviderName}] verifyAndLogin called for email: ${email}`)
             queryRunner = getRunningExpressApp().AppDataSource.createQueryRunner()
             await queryRunner.connect()
 
@@ -140,6 +142,7 @@ abstract class SSOBase {
             }
             return done(null, loggedInUser as Express.User, { message: 'Logged in Successfully' })
         } catch (error) {
+            logger.error(`[${ssoProviderName}] verifyAndLogin failed for email: ${email}`, error)
             return done(
                 { name: 'SSO_LOGIN_FAILED', message: ssoProviderName + ' Login failed! Please contact your administrator.' },
                 undefined

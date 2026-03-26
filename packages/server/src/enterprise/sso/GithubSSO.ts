@@ -1,5 +1,6 @@
 import SSOBase from './SSOBase'
 import passport from 'passport'
+import logger from '../../utils/logger'
 import { LoggedInUser } from '../Interface.Enterprise'
 import { setTokenOrCookies } from '../middleware/passport'
 import { Strategy as GitHubStrategy, Profile } from 'passport-github'
@@ -35,18 +36,26 @@ class GithubSSO extends SSOBase {
                     },
                     async (accessToken: string, refreshToken: string, profile: Profile, done: any) => {
                         // Fetch emails from GitHub API using the access token.
+                        logger.debug(`[Github SSO] Fetching emails for profile id: ${profile.id}`)
                         const emailResponse = await fetch('https://api.github.com/user/emails', {
                             headers: {
                                 Authorization: `token ${accessToken}`,
                                 'User-Agent': 'Node.js'
                             }
                         })
+                        if (!emailResponse.ok) {
+                            logger.error(
+                                `[Github SSO] Failed to fetch emails from GitHub API: ${emailResponse.status} ${emailResponse.statusText}`
+                            )
+                        }
                         const emails = await emailResponse.json()
+                        logger.debug(`[Github SSO] GitHub email API response: ${JSON.stringify(emails)}`)
                         // Look for a verified primary email.
                         let primaryEmail = emails.find((email: any) => email.primary && email.verified)?.email
                         if (!primaryEmail && Array.isArray(emails) && emails.length > 0) {
                             primaryEmail = emails[0].email
                         }
+                        logger.debug(`[Github SSO] Resolved primary email: ${primaryEmail}`)
                         return this.verifyAndLogin(this.app, primaryEmail, done, profile, accessToken, refreshToken)
                     }
                 )
