@@ -5,6 +5,7 @@ import { styled } from '@mui/material/styles'
 import { mergeAttributes } from '@tiptap/core'
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
 import Placeholder from '@tiptap/extension-placeholder'
+import { Markdown } from '@tiptap/markdown'
 import { EditorContent, useEditor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import javascript from 'highlight.js/lib/languages/javascript'
@@ -27,18 +28,20 @@ lowlight.register('json', json)
 lowlight.register('python', python)
 lowlight.register('typescript', typescript)
 
-const CustomCodeBlock = CodeBlockLowlight.extend({
-    addOptions() {
-        return { ...this.parent?.(), lowlight, enableTabIndentation: true, tabSize: 2 }
-    }
-})
+/**
+ * Detect if content is legacy HTML (from old getHTML() storage) vs markdown.
+ * Matches the isHtmlContent check in packages/ui/src/ui-component/input/RichInput.jsx:20-23.
+ */
+const isHtmlContent = (content: string): boolean => {
+    return /<(?:p|div|span|h[1-6]|ul|ol|li|br|code|pre|blockquote|table|strong|em)\b/i.test(content)
+}
 
 export interface VariableInputProps {
     value: string
     onChange: (value: string) => void
     placeholder?: string
     disabled?: boolean
-    /** Number of visible text rows. When set, renders as a multiline editor. */
+    /** Number of visible text rows. When set, renders as a multiline editor and uses markdown serialization. */
     rows?: number
     /** Available variables for autocomplete when typing `{{` */
     suggestionItems?: SuggestionItem[]
@@ -139,9 +142,17 @@ const StyledEditorContent = styled(EditorContent, {
  * with available variables. Selecting a variable inserts it as a styled mention chip
  * that renders as `{{variableName}}` in the output text.
  *
+ * Serialization matches the UI's RichInput behavior:
+ * - Multiline fields (rows > 0): markdown via getMarkdown() — enables full round-tripping
+ *   with the original Flowise UI which also uses markdown for multiline fields
+ * - Single-line fields (no rows): HTML via getHTML()
+ *
  * This is the agentflow equivalent of the UI package's RichInput component.
  */
 export function VariableInput({ value, onChange, placeholder, disabled = false, rows, suggestionItems }: VariableInputProps) {
+    // Multiline fields use markdown serialization to match UI's RichInput behavior
+    const useMarkdown = !!rows
+
     const onChangeRef = useRef(onChange)
     useEffect(() => {
         onChangeRef.current = onChange
@@ -154,8 +165,12 @@ export function VariableInput({ value, onChange, placeholder, disabled = false, 
 
     const extensions = useMemo(
         () => [
-            StarterKit.configure({ codeBlock: false }),
-            CustomCodeBlock,
+            Markdown,
+            StarterKit.configure({
+                codeBlock: false,
+                ...(!useMarkdown && { link: false })
+            }),
+            CodeBlockLowlight.configure({ lowlight, enableTabIndentation: true, tabSize: 2 }),
             ...(placeholder ? [Placeholder.configure({ placeholder })] : []),
             ...(suggestionConfig
                 ? [
@@ -175,26 +190,39 @@ export function VariableInput({ value, onChange, placeholder, disabled = false, 
                   ]
                 : [])
         ],
-        [placeholder, suggestionConfig]
+        [placeholder, suggestionConfig, useMarkdown]
     )
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const editor = useEditor({
         extensions,
-        content: value,
+        content: '',
         editable: !disabled,
-        onUpdate: ({ editor: ed }: { editor: { getHTML: () => string } }) => {
-            // getHTML() returns HTML with mention nodes rendered via renderText as {{label}}
-            // We emit HTML so the content round-trips correctly through TipTap
-            onChangeRef.current(ed.getHTML())
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        onUpdate: ({ editor: ed }: any) => {
+            if (useMarkdown) {
+                try {
+                    onChangeRef.current(ed.getMarkdown())
+                } catch {
+                    onChangeRef.current(ed.getHTML())
+                }
+            } else {
+                onChangeRef.current(ed.getHTML())
+            }
         }
     })
 
-    // Sync external value changes into the editor
+    // Load initial content after editor is ready, detecting HTML vs markdown
+    // Matches packages/ui/src/ui-component/input/RichInput.jsx:171-178
     useEffect(() => {
-        if (editor && value !== editor.getHTML()) {
-            editor.commands.setContent(value, false)
+        if (editor && value) {
+            if (!useMarkdown || isHtmlContent(value)) {
+                editor.commands.setContent(value)
+            } else {
+                editor.commands.setContent(value, { contentType: 'markdown' })
+            }
         }
-    }, [editor, value])
+    }, [editor]) // eslint-disable-line react-hooks/exhaustive-deps
 
     // Sync editable state
     useEffect(() => {

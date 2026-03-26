@@ -4,10 +4,29 @@
  * Port of packages/ui/src/ui-component/input/suggestionOption.js render() to TypeScript,
  * adapted for the agentflow SuggestionDropdown component.
  */
+import type { Editor, Range } from '@tiptap/core'
+import type { EditorView } from '@tiptap/pm/view'
 import { ReactRenderer } from '@tiptap/react'
 import tippy, { type Instance as TippyInstance } from 'tippy.js'
 
 import { SuggestionDropdown, type SuggestionDropdownRef, type SuggestionItem } from './SuggestionDropdown'
+
+interface SuggestionCallbackProps {
+    editor: Editor
+    range: Range
+    query: string
+    text: string
+    items: SuggestionItem[]
+    command: (props: SuggestionItem) => void
+    decorationNode: Element | null
+    clientRect?: (() => DOMRect | null) | null
+}
+
+interface SuggestionKeyDownCallbackProps {
+    view: EditorView
+    event: KeyboardEvent
+    range: Range
+}
 
 /**
  * Workaround for the typing incompatibility between Tippy.js and TipTap Suggestion utility.
@@ -52,8 +71,7 @@ export function createSuggestionConfig(suggestionItems: SuggestionItem[]) {
             let popup: TippyInstance | undefined
 
             return {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                onStart: (props: any) => {
+                onStart: (props: SuggestionCallbackProps) => {
                     component = new ReactRenderer(SuggestionDropdown, {
                         props,
                         editor: props.editor
@@ -71,16 +89,14 @@ export function createSuggestionConfig(suggestionItems: SuggestionItem[]) {
                     popup = instance
                 },
 
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                onUpdate(props: any) {
+                onUpdate(props: SuggestionCallbackProps) {
                     component?.updateProps(props)
                     popup?.setProps({
                         getReferenceClientRect: () => props.clientRect?.() ?? DOM_RECT_FALLBACK
                     })
                 },
 
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                onKeyDown(props: any) {
+                onKeyDown(props: SuggestionKeyDownCallbackProps) {
                     if (props.event.key === 'Escape') {
                         popup?.hide()
                         return true
