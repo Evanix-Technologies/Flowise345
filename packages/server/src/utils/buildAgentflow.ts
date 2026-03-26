@@ -1546,6 +1546,7 @@ export const executeAgentFlow = async ({
     const startInputType = nodes.find((node) => node.data.name === 'startAgentflow')?.data.inputs?.startInputType as
         | 'chatInput'
         | 'formInput'
+        | 'webhookTrigger'
     if (!startInputType && !isRecursive) {
         throw new Error('Start input type not found')
     }
@@ -2251,6 +2252,8 @@ export const executeAgentFlow = async ({
         } else {
             finalUserInput = question || humanInput?.feedback || ' '
         }
+    } else if (startInputType === 'webhookTrigger') {
+        finalUserInput = incomingInput.webhook ? JSON.stringify(incomingInput.webhook) : ' '
     }
 
     const userMessage: Omit<IChatMessage, 'id'> = {

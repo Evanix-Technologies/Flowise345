@@ -24,7 +24,18 @@ import {
 import { useGridApiContext } from '@mui/x-data-grid'
 import IconAutoFixHigh from '@mui/icons-material/AutoFixHigh'
 import { tooltipClasses } from '@mui/material/Tooltip'
-import { IconWand, IconVariable, IconArrowsMaximize, IconEdit, IconAlertTriangle, IconBulb, IconRefresh, IconX } from '@tabler/icons-react'
+import {
+    IconWand,
+    IconVariable,
+    IconArrowsMaximize,
+    IconEdit,
+    IconAlertTriangle,
+    IconBulb,
+    IconRefresh,
+    IconX,
+    IconCopy
+} from '@tabler/icons-react'
+import InputAdornment from '@mui/material/InputAdornment'
 import { Tabs } from '@mui/base/Tabs'
 import Autocomplete, { autocompleteClasses } from '@mui/material/Autocomplete'
 
@@ -1077,7 +1088,42 @@ const NodeInputHandler = ({
                             </>
                         )}
 
-                        {(inputParam.type === 'string' || inputParam.type === 'password' || inputParam.type === 'number') &&
+                        {inputParam.name === 'webhookURL' &&
+                            (() => {
+                                // Parse chatflowId from URL (e.g. /v2/agentcanvas/{id}).
+                                // knownPaths prevents unsaved flows from generating broken URLs.
+                                const pathSegments = window.location.pathname.split('/').filter(Boolean)
+                                const lastSegment = pathSegments[pathSegments.length - 1] || ''
+                                const knownPaths = ['agentcanvas', 'canvas', 'v2', 'marketplace']
+                                const chatflowId = knownPaths.includes(lastSegment) ? '' : lastSegment
+                                const webhookUrl = chatflowId
+                                    ? `${window.location.origin}/api/v1/webhook/${chatflowId}`
+                                    : 'Save the flow first to generate the webhook URL'
+                                return (
+                                    <TextField
+                                        fullWidth
+                                        size='small'
+                                        disabled
+                                        value={webhookUrl}
+                                        sx={{ mt: 1 }}
+                                        InputProps={{
+                                            readOnly: true,
+                                            endAdornment: chatflowId ? (
+                                                <InputAdornment position='end'>
+                                                    <Tooltip title='Copy URL'>
+                                                        <IconButton size='small' onClick={() => navigator.clipboard.writeText(webhookUrl)}>
+                                                            <IconCopy size={16} />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                </InputAdornment>
+                                            ) : undefined
+                                        }}
+                                    />
+                                )
+                            })()}
+
+                        {inputParam.name !== 'webhookURL' &&
+                            (inputParam.type === 'string' || inputParam.type === 'password' || inputParam.type === 'number') &&
                             (inputParam?.acceptVariable &&
                             (window.location.href.includes('v2/agentcanvas') || window.location.href.includes('v2/marketplace')) ? (
                                 <RichInput
