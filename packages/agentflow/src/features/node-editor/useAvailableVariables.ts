@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 
 import type { VariableItem } from '@/atoms/SelectVariable'
-import type { FlowEdge, FlowNode } from '@/core/types'
+import { getUpstreamNodes } from '@/core/utils/variableUtils'
 import { useAgentflowContext } from '@/infrastructure/store'
 
 // ── Static global variables (matches original SelectVariable.jsx) ───────────
@@ -21,21 +21,6 @@ const GLOBAL_VARIABLES: VariableItem[] = [
         value: '{{file_attachment}}'
     }
 ]
-
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
-/**
- * Walk edges backward from `nodeId` to collect all direct upstream source nodes.
- */
-function getUpstreamNodes(nodeId: string, nodes: FlowNode[], edges: FlowEdge[]): FlowNode[] {
-    const sourceIds = new Set<string>()
-    for (const edge of edges) {
-        if (edge.target === nodeId) {
-            sourceIds.add(edge.source)
-        }
-    }
-    return nodes.filter((n) => sourceIds.has(n.id))
-}
 
 // ── Hook ─────────────────────────────────────────────────────────────────────
 

@@ -21,6 +21,8 @@ import { IconArrowsMaximize, IconVariable } from '@tabler/icons-react'
 
 import type { InputAnchor, InputParam, NodeData } from '@/core/types'
 
+import { SuggestionItem } from './inputs/SuggestionDropdown'
+import { VariableInput } from './inputs/VariableInput'
 import ArrayInput from './ArrayInput'
 import { CodeInput } from './CodeInput'
 import { Dropdown } from './Dropdown'
@@ -178,6 +180,17 @@ export function NodeInputHandler({
         ['string', 'password', 'code'].includes(inputParam?.type ?? '')
     )
 
+    // Map VariableItem[] to SuggestionItem[] for the inline autocomplete
+    const suggestionItems: SuggestionItem[] | undefined = useMemo(() => {
+        if (!inputParam?.acceptVariable || !variableItems || variableItems.length === 0) return undefined
+        return variableItems.map((v) => ({
+            id: v.value,
+            label: v.label,
+            description: v.description,
+            category: v.category
+        }))
+    }, [inputParam?.acceptVariable, variableItems])
+
     const renderInput = () => {
         if (!inputParam) return null
 
@@ -185,6 +198,20 @@ export function NodeInputHandler({
 
         switch (inputParam.type) {
             case 'string':
+                // When acceptVariable is enabled and suggestions are available, use VariableInput
+                // which provides inline {{ autocomplete
+                if (suggestionItems && suggestionItems.length > 0) {
+                    return (
+                        <VariableInput
+                            value={typeof value === 'string' ? value : ''}
+                            onChange={(v) => handleDataChange(v)}
+                            placeholder={inputParam.placeholder}
+                            disabled={disabled}
+                            rows={inputParam.rows}
+                            suggestionItems={suggestionItems}
+                        />
+                    )
+                }
                 if (isExpandable) {
                     return (
                         <RichTextEditor

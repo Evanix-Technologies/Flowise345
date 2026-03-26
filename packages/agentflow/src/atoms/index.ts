@@ -13,6 +13,9 @@ export { SelectVariable, type SelectVariableProps, type VariableItem } from './S
 // RichTextEditor is exported from the .lazy wrapper (not the real module) to avoid
 // eagerly pulling TipTap + highlight.js into the main bundle. Importing directly
 // from ./RichTextEditor would defeat code-splitting since barrel imports are resolved eagerly.
+export { SuggestionDropdown, type SuggestionDropdownProps, type SuggestionItem } from './inputs/SuggestionDropdown'
+export { VariableInput, type VariableInputProps } from './inputs/VariableInput'
+export { VariablePicker, type VariablePickerProps } from './inputs/VariablePicker'
 export type { RichTextEditorProps } from './RichTextEditor'
 export { RichTextEditor } from './RichTextEditor.lazy'
 export { ScenariosInput, type ScenariosInputProps } from './ScenariosInput'

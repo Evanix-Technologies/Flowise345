@@ -9,3 +9,6 @@ export { evaluateFieldVisibility, evaluateParamVisibility, stripHiddenFieldValue
 
 // Dynamic output anchor utilities
 export { buildDynamicOutputAnchors, parseOutputHandleIndex } from './dynamicOutputAnchors'
+
+// Variable utilities
+export { detectTrigger, extractVariables, getUpstreamNodes, resolveVariableInsert, VARIABLE_REGEX } from './variableUtils'
