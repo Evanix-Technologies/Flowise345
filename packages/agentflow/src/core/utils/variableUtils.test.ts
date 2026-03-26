@@ -1,4 +1,4 @@
-import { detectTrigger, extractVariables, getUpstreamNodes, resolveVariableInsert } from './variableUtils'
+import { extractVariables, getUpstreamNodes } from './variableUtils'
 
 // ── extractVariables ────────────────────────────────────────────────────────
 
@@ -53,78 +53,23 @@ describe('extractVariables', () => {
     })
 })
 
-// ── resolveVariableInsert ───────────────────────────────────────────────────
-
-describe('resolveVariableInsert', () => {
-    it('replaces partial trigger with full variable token', () => {
-        expect(resolveVariableInsert('Hello {{que', 6, 'question')).toBe('Hello {{question}}')
-    })
-
-    it('replaces empty trigger with full variable token', () => {
-        expect(resolveVariableInsert('Hello {{', 6, 'question')).toBe('Hello {{question}}')
-    })
-
-    it('works at the start of text', () => {
-        expect(resolveVariableInsert('{{ch', 0, 'chat_history')).toBe('{{chat_history}}')
-    })
-
-    it('preserves text after the trigger when no closing braces', () => {
-        // If user typed "Hello {{que" and cursor is at end
-        expect(resolveVariableInsert('Hello {{que', 6, 'question')).toBe('Hello {{question}}')
-    })
-
-    it('handles node output paths', () => {
-        expect(resolveVariableInsert('Use {{nod', 4, 'node1.data.instance')).toBe('Use {{node1.data.instance}}')
-    })
-
-    it('handles flow state paths', () => {
-        expect(resolveVariableInsert('Val: {{$fl', 5, '$flow.state.count')).toBe('Val: {{$flow.state.count}}')
-    })
-})
-
-// ── detectTrigger ───────────────────────────────────────────────────────────
-
-describe('detectTrigger', () => {
-    it('returns null for text without trigger', () => {
-        expect(detectTrigger('Hello world')).toBeNull()
-    })
-
-    it('returns null for completed variable', () => {
-        expect(detectTrigger('Hello {{question}}')).toBeNull()
-    })
-
-    it('detects empty trigger', () => {
-        expect(detectTrigger('Hello {{')).toEqual({ query: '', triggerIndex: 6 })
-    })
-
-    it('detects trigger with partial query', () => {
-        expect(detectTrigger('Hello {{que')).toEqual({ query: 'que', triggerIndex: 6 })
-    })
-
-    it('detects trigger after completed variable', () => {
-        expect(detectTrigger('{{question}} and {{')).toEqual({ query: '', triggerIndex: 17 })
-    })
-
-    it('detects trigger with dot-path query', () => {
-        expect(detectTrigger('{{$flow.sta')).toEqual({ query: '$flow.sta', triggerIndex: 0 })
-    })
-
-    it('returns null for single brace', () => {
-        expect(detectTrigger('Hello {')).toBeNull()
-    })
-})
-
 // ── getUpstreamNodes ────────────────────────────────────────────────────────
 
 describe('getUpstreamNodes', () => {
-    const makeNode = (
-        id: string
-    ): { id: string; type: string; position: { x: number; y: number }; data: { id: string; name: string; label: string } } => ({
-        id,
-        type: 'customNode',
-        position: { x: 0, y: 0 },
-        data: { id, name: id, label: id }
-    })
+    const makeNode = (id: string, overrides?: { name?: string; parentNode?: string }) =>
+        ({
+            id,
+            type: 'customNode',
+            position: { x: 0, y: 0 },
+            data: { id, name: overrides?.name ?? id, label: id },
+            ...(overrides?.parentNode ? { parentNode: overrides.parentNode } : {})
+        } as {
+            id: string
+            type: string
+            position: { x: number; y: number }
+            data: { id: string; name: string; label: string }
+            parentNode?: string
+        })
 
     const makeEdge = (source: string, target: string) => ({
         id: `${source}-${target}`,
@@ -165,5 +110,69 @@ describe('getUpstreamNodes', () => {
     it('returns empty array when edges array is empty', () => {
         const nodes = [makeNode('a')]
         expect(getUpstreamNodes('a', nodes, [])).toEqual([])
+    })
+
+    it('recursively collects the full ancestor chain', () => {
+        // a → b → c → d: querying from d should return [a, b, c]
+        const nodes = [makeNode('a'), makeNode('b'), makeNode('c'), makeNode('d')]
+        const edges = [makeEdge('a', 'b'), makeEdge('b', 'c'), makeEdge('c', 'd')]
+        const upstream = getUpstreamNodes('d', nodes, edges)
+        expect(upstream.map((n) => n.id).sort()).toEqual(['a', 'b', 'c'])
+    })
+
+    it('handles diamond-shaped graphs without duplicates', () => {
+        //   a
+        //  / \
+        // b   c
+        //  \ /
+        //   d
+        const nodes = [makeNode('a'), makeNode('b'), makeNode('c'), makeNode('d')]
+        const edges = [makeEdge('a', 'b'), makeEdge('a', 'c'), makeEdge('b', 'd'), makeEdge('c', 'd')]
+        const upstream = getUpstreamNodes('d', nodes, edges)
+        expect(upstream.map((n) => n.id).sort()).toEqual(['a', 'b', 'c'])
+    })
+
+    it('excludes startAgentflow by default', () => {
+        const nodes = [makeNode('start_0', { name: 'startAgentflow' }), makeNode('agent_0')]
+        const edges = [makeEdge('start_0', 'agent_0')]
+        const upstream = getUpstreamNodes('agent_0', nodes, edges)
+        expect(upstream).toHaveLength(0)
+    })
+
+    it('includes startAgentflow when includeStart is true', () => {
+        const nodes = [makeNode('start_0', { name: 'startAgentflow' }), makeNode('agent_0')]
+        const edges = [makeEdge('start_0', 'agent_0')]
+        const upstream = getUpstreamNodes('agent_0', nodes, edges, true)
+        expect(upstream).toHaveLength(1)
+        expect(upstream[0].id).toBe('start_0')
+    })
+
+    it('excludes startAgentflow but still collects nodes behind it', () => {
+        // In practice startAgentflow is the root, but this tests the exclusion logic:
+        // llm_0 → start_0 (excluded) → agent_0
+        const nodes = [makeNode('llm_0'), makeNode('start_0', { name: 'startAgentflow' }), makeNode('agent_0')]
+        const edges = [makeEdge('llm_0', 'start_0'), makeEdge('start_0', 'agent_0')]
+        const upstream = getUpstreamNodes('agent_0', nodes, edges)
+        // start_0 is excluded, but llm_0 should NOT be collected because
+        // we skip start_0 entirely (don't recurse through excluded nodes)
+        expect(upstream).toHaveLength(0)
+    })
+
+    it('traverses parentNode for nodes inside iteration groups', () => {
+        // group_0 contains child_0 (via parentNode). outer_0 → group_0.
+        // Querying from child_0 should find outer_0 via the parentNode traversal.
+        const nodes = [makeNode('outer_0'), makeNode('group_0'), makeNode('child_0', { parentNode: 'group_0' })]
+        const edges = [makeEdge('outer_0', 'group_0')]
+        const upstream = getUpstreamNodes('child_0', nodes, edges)
+        expect(upstream.map((n) => n.id)).toContain('outer_0')
+    })
+
+    it('handles cycles without infinite loop', () => {
+        // a → b → a (cycle)
+        const nodes = [makeNode('a'), makeNode('b')]
+        const edges = [makeEdge('a', 'b'), makeEdge('b', 'a')]
+        const upstream = getUpstreamNodes('a', nodes, edges)
+        expect(upstream).toHaveLength(1)
+        expect(upstream[0].id).toBe('b')
     })
 })

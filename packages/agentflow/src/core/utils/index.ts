@@ -12,4 +12,4 @@ export { buildDynamicOutputAnchors, parseOutputHandleIndex } from './dynamicOutp
 
 // Variable utilities
 export { CustomMention } from './customMention'
-export { detectTrigger, extractVariables, getUpstreamNodes, resolveVariableInsert, VARIABLE_REGEX } from './variableUtils'
+export { extractVariables, getUpstreamNodes, VARIABLE_REGEX } from './variableUtils'

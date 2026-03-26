@@ -3,9 +3,6 @@ import type { FlowEdge, FlowNode } from '@/core/types'
 /** Regex that matches `{{variablePath}}` tokens in text. Use with `g` flag. */
 export const VARIABLE_REGEX = /\{\{([^{}]+)\}\}/g
 
-/** Regex that detects an unclosed `{{` trigger at the end of text (for autocomplete). */
-export const TRIGGER_REGEX = /\{\{([^{}]*)$/
-
 /**
  * Extract all variable paths from a string containing `{{variable}}` tokens.
  *
@@ -29,48 +26,49 @@ export function extractVariables(text: string): string[] {
 }
 
 /**
- * Replace the partial `{{query` at `triggerIndex` with the full `{{variablePath}}` token.
+ * Recursively walk edges backward from `nodeId` to collect **all** ancestor nodes
+ * in the AgentFlow V2 graph. Excludes `startAgentflow` by default (its state
+ * variables are handled separately by `useAvailableVariables`). Also traverses
+ * the `parentNode` property for nodes inside iteration groups.
  *
- * @param text        Current input text
- * @param triggerIndex  Index of the opening `{{` in the text
- * @param variablePath  The variable path to insert (without braces)
- * @returns Updated text with the variable inserted
+ * Matches the `collectAgentFlowV2ParentNodes` logic in
+ * packages/ui/src/utils/genericHelper.js:655-672.
  *
- * @example
- * resolveVariableInsert('Hello {{que', 6, 'question')
- * // => 'Hello {{question}}'
+ * @param includeStart  When true, include `startAgentflow` in the results.
  */
-export function resolveVariableInsert(text: string, triggerIndex: number, variablePath: string): string {
-    const before = text.slice(0, triggerIndex)
-    // Find the end of the partial query — everything after `{{` up to cursor (end of string or next `}}`)
-    const afterTrigger = text.slice(triggerIndex)
-    // Match the `{{partialQuery` portion and replace with complete token
-    const replaced = afterTrigger.replace(/^\{\{[^{}]*/, `{{${variablePath}}}`)
-    return before + replaced
-}
+export function getUpstreamNodes(nodeId: string, nodes: FlowNode[], edges: FlowEdge[], includeStart = false): FlowNode[] {
+    const collected = new Set<string>()
+    // Never include the queried node itself (prevents self-reference in cycles)
+    collected.add(nodeId)
 
-/**
- * Walk edges backward from `nodeId` to collect all direct upstream source nodes.
- */
-export function getUpstreamNodes(nodeId: string, nodes: FlowNode[], edges: FlowEdge[]): FlowNode[] {
-    const sourceIds = new Set<string>()
-    for (const edge of edges) {
-        if (edge.target === nodeId) {
-            sourceIds.add(edge.source)
+    function collect(targetId: string) {
+        // In AgentFlow V2, targetHandle === targetNodeId for node-level connections
+        const inputEdges = edges.filter((e) => e.target === targetId)
+
+        for (const edge of inputEdges) {
+            if (collected.has(edge.source)) continue
+
+            const parentNode = nodes.find((n) => n.id === edge.source)
+            if (!parentNode) continue
+
+            // Exclude startAgentflow unless explicitly requested
+            if (parentNode.data.name === 'startAgentflow' && !includeStart) {
+                continue
+            }
+
+            collected.add(parentNode.id)
+            // Recurse to collect the full ancestor chain
+            collect(parentNode.id)
         }
     }
-    return nodes.filter((n) => sourceIds.has(n.id))
-}
 
-/**
- * Detect whether the text before the cursor contains an unclosed `{{` trigger.
- * Returns the query string (text after `{{`) and the trigger index, or null if no trigger.
- */
-export function detectTrigger(textBeforeCursor: string): { query: string; triggerIndex: number } | null {
-    const match = TRIGGER_REGEX.exec(textBeforeCursor)
-    if (!match) return null
-    return {
-        query: match[1],
-        triggerIndex: match.index
+    collect(nodeId)
+
+    // Also traverse the parentNode property (for nodes inside iteration groups)
+    const targetNode = nodes.find((n) => n.id === nodeId)
+    if (targetNode?.parentNode) {
+        collect(targetNode.parentNode)
     }
+
+    return nodes.filter((n) => n.id !== nodeId && collected.has(n.id))
 }
