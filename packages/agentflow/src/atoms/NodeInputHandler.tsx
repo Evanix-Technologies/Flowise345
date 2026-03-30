@@ -184,7 +184,7 @@ export function NodeInputHandler({
     const suggestionItems: SuggestionItem[] | undefined = useMemo(() => {
         if (!inputParam?.acceptVariable || !variableItems || variableItems.length === 0) return undefined
         return variableItems.map((v) => ({
-            id: v.value,
+            id: v.value.replace(/{{|}}/g, ''),
             label: v.label,
             description: v.description,
             category: v.category
@@ -476,7 +476,10 @@ export function NodeInputHandler({
                                         size='small'
                                         sx={{ height: 25, width: 25 }}
                                         disabled={disabled}
-                                        onClick={(e) => !suggestionItems?.length && setVariableAnchorEl(e.currentTarget)}
+                                        onClick={(e) =>
+                                            (inputParam?.type !== 'string' || !suggestionItems?.length) &&
+                                            setVariableAnchorEl(e.currentTarget)
+                                        }
                                     >
                                         <IconVariable size={20} style={{ color: theme.palette.info.main }} />
                                     </IconButton>
