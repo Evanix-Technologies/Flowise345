@@ -158,8 +158,7 @@ export function VariableInput({ value, onChange, placeholder, disabled = false, 
                 ? [
                       CustomMention.configure({
                           HTMLAttributes: { class: 'mention' },
-                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                          renderHTML({ options, node }: any) {
+                          renderHTML({ options, node }) {
                               return [
                                   'span',
                                   mergeAttributes(this.HTMLAttributes ?? {}, options.HTMLAttributes),
@@ -175,13 +174,11 @@ export function VariableInput({ value, onChange, placeholder, disabled = false, 
         [placeholder, suggestionConfig]
     )
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const editor = useEditor({
         extensions,
         content: '',
         editable: !disabled,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        onUpdate: ({ editor: ed }: any) => {
+        onUpdate: ({ editor: ed }) => {
             // Always use HTML serialization. The @tiptap/markdown v3 getMarkdown()
             // returns empty strings (known issue with the MarkdownManager in v3.20.4).
             // HTML round-trips correctly because the Mention extension's parseHTML

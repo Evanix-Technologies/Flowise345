@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 
 import { Box, Divider, List, ListItem, ListItemAvatar, ListItemButton, ListItemText, Stack, Typography } from '@mui/material'
+import { useTheme } from '@mui/material/styles'
 import { IconBinaryTree, IconHistory, IconMessageChatbot, IconPaperclip } from '@tabler/icons-react'
 
 export interface VariableItem {
@@ -8,6 +9,10 @@ export interface VariableItem {
     description?: string
     category?: string
     value: string
+    /** Optional per-item icon component (e.g. the upstream node's icon). */
+    icon?: React.ElementType
+    /** Optional per-item icon color. Falls back to the category color. */
+    iconColor?: string
 }
 
 export interface VariablePickerProps {
@@ -30,6 +35,7 @@ const DEFAULT_STYLE = { icon: IconPaperclip, color: '#90A4AE' }
  * injection, non-TipTap variable selection).
  */
 export function VariablePicker({ items, onSelect, disabled = false }: VariablePickerProps) {
+    const theme = useTheme()
     const grouped = useMemo(() => {
         const groups: { category: string; items: VariableItem[] }[] = []
         const seen = new Map<string, VariableItem[]>()
@@ -75,37 +81,41 @@ export function VariablePicker({ items, onSelect, disabled = false }: VariablePi
                                 {group.category}
                             </Typography>
                             <List disablePadding>
-                                {group.items.map((item, idx) => (
-                                    <ListItemButton
-                                        key={`${item.value}-${idx}`}
-                                        sx={{
-                                            p: 0,
-                                            borderRadius: '8px',
-                                            boxShadow: '0 2px 14px 0 rgb(32 40 45 / 8%)',
-                                            mb: 1
-                                        }}
-                                        onClick={() => onSelect(item.value)}
-                                    >
-                                        <ListItem alignItems='center'>
-                                            <ListItemAvatar>
-                                                <Box
-                                                    sx={{
-                                                        width: 50,
-                                                        height: 50,
-                                                        borderRadius: '50%',
-                                                        backgroundColor: 'white',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center'
-                                                    }}
-                                                >
-                                                    <Icon size={30} stroke={1.5} color={style.color} />
-                                                </Box>
-                                            </ListItemAvatar>
-                                            <ListItemText sx={{ ml: 1 }} primary={item.label} secondary={item.description} />
-                                        </ListItem>
-                                    </ListItemButton>
-                                ))}
+                                {group.items.map((item, idx) => {
+                                    const ItemIcon = item.icon ?? Icon
+                                    const itemColor = item.iconColor ?? style.color
+                                    return (
+                                        <ListItemButton
+                                            key={`${item.value}-${idx}`}
+                                            sx={{
+                                                p: 0,
+                                                borderRadius: `${theme.shape.borderRadius}px`,
+                                                boxShadow: '0 2px 14px 0 rgb(32 40 45 / 8%)',
+                                                mb: 1
+                                            }}
+                                            onClick={() => onSelect(item.value)}
+                                        >
+                                            <ListItem alignItems='center'>
+                                                <ListItemAvatar>
+                                                    <Box
+                                                        sx={{
+                                                            width: 50,
+                                                            height: 50,
+                                                            borderRadius: '50%',
+                                                            backgroundColor: 'white',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center'
+                                                        }}
+                                                    >
+                                                        <ItemIcon size={30} stroke={1.5} color={itemColor} />
+                                                    </Box>
+                                                </ListItemAvatar>
+                                                <ListItemText sx={{ ml: 1 }} primary={item.label} secondary={item.description} />
+                                            </ListItem>
+                                        </ListItemButton>
+                                    )
+                                })}
                             </List>
                         </Box>
                     )

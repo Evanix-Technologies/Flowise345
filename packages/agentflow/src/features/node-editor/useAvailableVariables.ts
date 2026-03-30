@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 
 import type { VariableItem } from '@/atoms/inputs/VariablePicker'
+import { getAgentflowIcon } from '@/core/node-config/nodeIconUtils'
 import { getUpstreamNodes } from '@/core/utils/variableUtils'
 import { useAgentflowContext } from '@/infrastructure/store'
 
@@ -79,11 +80,14 @@ export function useAvailableVariables(nodeId: string): VariableItem[] {
                 node.data.label ??
                 node.data.id
 
+            const agentflowIcon = getAgentflowIcon(node.data.name)
             items.push({
                 label: displayName,
                 description: `Output from ${node.data.label ?? node.data.name}`,
                 category: 'Node Outputs',
-                value: `{{${node.id}.data.instance}}`
+                value: `{{${node.id}.data.instance}}`,
+                icon: agentflowIcon?.icon,
+                iconColor: agentflowIcon?.color
             })
         }
 
