@@ -21,18 +21,18 @@ import { IconArrowsMaximize, IconVariable } from '@tabler/icons-react'
 
 import type { InputAnchor, InputParam, NodeData } from '@/core/types'
 
-import { SuggestionItem } from './inputs/SuggestionDropdown'
-import { VariableInput } from './inputs/VariableInput'
-import type { VariableItem } from './inputs/VariablePicker'
-import { VariablePicker } from './inputs/VariablePicker'
 import ArrayInput from './ArrayInput'
 import { CodeInput } from './CodeInput'
 import { Dropdown } from './Dropdown'
 import { ExpandTextDialog } from './ExpandTextDialog'
 import { JsonInput } from './JsonInput'
 import { RichTextEditor } from './RichTextEditor.lazy'
+import { SuggestionItem } from './SuggestionDropdown'
 import { SwitchInput } from './SwitchInput'
 import { TooltipWithParser } from './TooltipWithParser'
+import { VariableInput } from './VariableInput'
+import type { VariableItem } from './VariablePicker'
+import { VariablePicker } from './VariablePicker'
 
 const CustomWidthTooltip = styled(({ className, ...props }: TooltipProps) => <Tooltip {...props} classes={{ popper: className }} />)({
     [`& .${tooltipClasses.tooltip}`]: {

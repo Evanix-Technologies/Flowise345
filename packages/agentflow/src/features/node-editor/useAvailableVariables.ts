@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 
-import type { VariableItem } from '@/atoms/inputs/VariablePicker'
+import type { VariableItem } from '@/atoms/VariablePicker'
 import { getAgentflowIcon } from '@/core/node-config/nodeIconUtils'
 import { getUpstreamNodes } from '@/core/utils/variableUtils'
 import { useAgentflowContext } from '@/infrastructure/store'

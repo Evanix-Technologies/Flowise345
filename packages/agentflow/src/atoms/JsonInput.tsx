@@ -4,8 +4,8 @@ import { FormControl, Popover } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
 import ReactJson from 'flowise-react-json-view'
 
-import type { VariableItem } from './inputs/VariablePicker'
-import { VariablePicker } from './inputs/VariablePicker'
+import type { VariableItem } from './VariablePicker'
+import { VariablePicker } from './VariablePicker'
 
 export interface JsonInputProps {
     value: string
