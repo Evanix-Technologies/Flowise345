@@ -16,6 +16,7 @@ import { createLowlight } from 'lowlight'
 
 import { CustomMention } from '@/core/primitives/customMention'
 import { tokens } from '@/core/theme/tokens'
+import { isHtmlContent } from '@/core/utils/editorUtils'
 
 import { createSuggestionConfig } from './suggestionConfig'
 import type { SuggestionItem } from './SuggestionDropdown'
@@ -203,7 +204,11 @@ export function VariableInput({ value, onChange, placeholder, disabled = false, 
     // not our own onChange being echoed back by the parent's state update).
     useEffect(() => {
         if (editor && value !== lastEmittedRef.current) {
-            editor.commands.setContent(value, { emitUpdate: false })
+            // Legacy HTML values (saved before markdown migration) must be loaded as HTML.
+            // New markdown values must be loaded with contentType: 'markdown' so TipTap's
+            // Markdown extension parses headings, lists, {{variable}} tokens, etc. correctly.
+            const contentType = isHtmlContent(value) ? 'html' : 'markdown'
+            editor.commands.setContent(value, { emitUpdate: false, contentType })
             lastEmittedRef.current = value
         }
     }, [editor, value])
