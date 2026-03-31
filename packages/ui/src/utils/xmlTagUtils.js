@@ -173,7 +173,9 @@ export function escapeCustomXmlTags(text) {
 }
 
 /**
- * Decode HTML entities (&lt; &gt;) back to angle brackets in ProseMirror JSON text nodes.
+ * Unescape non-standard XML tag entities in ProseMirror JSON text nodes.
+ * Delegates to unescapeCustomXmlTags so only non-standard tags are affected —
+ * intentional literal entities (e.g. "&lt;div&gt;" in a prompt about HTML) are preserved.
  * Call this after setContent() to fix the visual display in the editor.
  * Mutates the JSON in-place and returns it.
  *
@@ -189,7 +191,7 @@ export function escapeCustomXmlTags(text) {
  */
 export function unescapeXmlEntities(json) {
     if (json.text) {
-        json.text = json.text.replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+        json.text = unescapeCustomXmlTags(json.text)
     }
     if (json.content) {
         json.content.forEach(unescapeXmlEntities)
@@ -199,11 +201,15 @@ export function unescapeXmlEntities(json) {
 
 /**
  * Unescape non-standard XML/HTML tags after markdown serialization.
- * Handles entity-escaped tags in the output for robustness.
+ * Only targets non-standard tags — standard HTML entities like &lt;div&gt; are
+ * left intact so intentional literal entities in user prompts are preserved.
  *
  * @example
  * unescapeCustomXmlTags('&lt;question&gt;text&lt;/question&gt;')
  * // → '<question>text</question>'
+ *
+ * unescapeCustomXmlTags('&lt;div&gt;text&lt;/div&gt;')
+ * // → '&lt;div&gt;text&lt;/div&gt;'  (standard HTML, left unchanged)
  *
  * unescapeCustomXmlTags('<question>text</question>')
  * // → '<question>text</question>'  (raw tags pass through unchanged)
@@ -213,7 +219,7 @@ export function unescapeXmlEntities(json) {
  */
 export function unescapeCustomXmlTags(text) {
     if (!text || typeof text !== 'string') return text
-    return text.replace(/&lt;(\/?)([a-zA-Z][a-zA-Z0-9_.-]*)(\s[^&]*)?(\/?)&gt;/g, (match, slash, tagName, attrs, selfClose) => {
+    return text.replace(/&lt;(\/?)([a-zA-Z][a-zA-Z0-9_.-]*)(\s.*?)?(\/?)&gt;/g, (match, slash, tagName, attrs, selfClose) => {
         if (STANDARD_HTML_TAGS.has(tagName.toLowerCase())) return match
         return `<${slash}${tagName}${attrs || ''}${selfClose}>`
     })

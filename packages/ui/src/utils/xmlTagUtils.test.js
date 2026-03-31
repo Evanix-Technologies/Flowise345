@@ -104,6 +104,47 @@ describe('xmlTagUtils', () => {
             const json = { type: 'doc', content: [] }
             expect(unescapeXmlEntities(json)).toBe(json)
         })
+
+        it('should preserve intentional standard HTML entities', () => {
+            // User prompt that teaches about HTML:
+            //   <instructions>
+            //   When generating HTML, use &lt;div&gt; for containers and &lt;span&gt; for inline elements.
+            //   </instructions>
+            //
+            // After escapeCustomXmlTags + marked parsing, the ProseMirror JSON has:
+            //   - &lt;instructions&gt; (escaped custom tag) → should be unescaped to <instructions>
+            //   - &lt;div&gt; (intentional literal entity) → should stay as &lt;div&gt;
+            const json = {
+                type: 'doc',
+                content: [
+                    {
+                        type: 'paragraph',
+                        content: [{ type: 'text', text: '&lt;instructions&gt;' }]
+                    },
+                    {
+                        type: 'paragraph',
+                        content: [
+                            {
+                                type: 'text',
+                                text: 'When generating HTML, use &lt;div&gt; for containers and &lt;span&gt; for inline elements.'
+                            }
+                        ]
+                    },
+                    {
+                        type: 'paragraph',
+                        content: [{ type: 'text', text: '&lt;/instructions&gt;' }]
+                    }
+                ]
+            }
+            unescapeXmlEntities(json)
+            // Custom tags are unescaped for display
+            expect(json.content[0].content[0].text).toBe('<instructions>')
+            expect(json.content[2].content[0].text).toBe('</instructions>')
+            // Standard HTML entities are preserved — user intended them as literal text
+            expect(json.content[1].content[0].text).toBe(
+                'When generating HTML, use &lt;div&gt; for containers and &lt;span&gt; for inline elements.'
+            )
+        })
     })
 
     describe('unescapeCustomXmlTags', () => {
@@ -113,6 +154,12 @@ describe('xmlTagUtils', () => {
 
         it('should unescape tags with attributes', () => {
             expect(unescapeCustomXmlTags('&lt;context type="user"&gt;hello&lt;/context&gt;')).toBe('<context type="user">hello</context>')
+        })
+
+        it('should unescape tags with attributes containing ampersands', () => {
+            expect(unescapeCustomXmlTags('&lt;datasource url="foo&amp;bar=1"&gt;text&lt;/datasource&gt;')).toBe(
+                '<datasource url="foo&amp;bar=1">text</datasource>'
+            )
         })
 
         it('should NOT unescape standard HTML entity-escaped tags', () => {
