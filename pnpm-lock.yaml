@@ -1373,6 +1373,9 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^4.2.0
         version: 4.2.1(vite@5.1.6(@types/node@22.16.3)(sass@1.71.1)(terser@5.29.1))
+      jest:
+        specifier: ^29.7.0
+        version: 29.7.0(@types/node@22.16.3)(babel-plugin-macros@3.1.0)(ts-node@10.9.2(@swc/core@1.4.6)(@types/node@22.16.3)(typescript@5.5.2))
       pretty-quick:
         specifier: ^3.1.3
         version: 3.3.1(prettier@3.2.5)

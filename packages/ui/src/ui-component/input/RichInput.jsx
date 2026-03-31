@@ -13,6 +13,7 @@ import { common, createLowlight } from 'lowlight'
 import { suggestionOptions } from './suggestionOption'
 import { getAvailableNodesForVariable } from '@/utils/genericHelper'
 import { CustomMention } from '@/utils/customMention'
+import { escapeCustomXmlTags, unescapeXmlEntities, unescapeCustomXmlTags } from '@/utils/xmlTagUtils'
 
 const lowlight = createLowlight(common)
 
@@ -154,7 +155,7 @@ export const RichInput = ({ inputParam, value, nodes, edges, nodeId, onChange, d
             onUpdate: ({ editor }) => {
                 if (useMarkdown) {
                     try {
-                        onChange(editor.getMarkdown())
+                        onChange(unescapeCustomXmlTags(editor.getMarkdown()))
                     } catch {
                         onChange(editor.getHTML())
                     }
@@ -173,7 +174,10 @@ export const RichInput = ({ inputParam, value, nodes, edges, nodeId, onChange, d
             if (!useMarkdown || isHtmlContent(value)) {
                 editor.commands.setContent(value)
             } else {
-                editor.commands.setContent(value, { contentType: 'markdown' })
+                // Step 1: Escape XML tags to entities so marked treats them as text
+                editor.commands.setContent(escapeCustomXmlTags(value), { contentType: 'markdown' })
+                // Step 2: Decode entities in the ProseMirror doc for proper display
+                editor.commands.setContent(unescapeXmlEntities(editor.getJSON()))
             }
         }
     }, [editor]) // eslint-disable-line react-hooks/exhaustive-deps

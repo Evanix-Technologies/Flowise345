@@ -247,8 +247,9 @@ export const resolveVariables = async (
         // If value is not a string, return as is
         if (typeof value !== 'string') return value
 
-        // Convert legacy HTML content to markdown, preserving any markdown syntax within
-        if (/<[a-z][a-z0-9]*[^>]*>/i.test(value)) {
+        // Convert legacy HTML content to markdown, preserving any markdown syntax within.
+        // Only match standard HTML tags to avoid stripping intentional XML tags like <question>, <context> etc.
+        if (/<(?:p|div|span|h[1-6]|ul|ol|li|br|code|pre|blockquote|table|strong|em)\b[^>]*>/i.test(value)) {
             const turndownService = new TurndownService()
             // Disable escaping so markdown characters (e.g. ###, -, *) inside HTML are preserved as-is
             turndownService.escape = (str: string) => str
