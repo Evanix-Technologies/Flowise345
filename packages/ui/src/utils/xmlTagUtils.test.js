@@ -209,6 +209,73 @@ describe('xmlTagUtils', () => {
         })
     })
 
+    describe('markdown formatting preservation', () => {
+        it('should preserve heading syntax', () => {
+            const input = '## My Task\nDo something useful'
+            expect(escapeXmlTags(input)).toBe(input)
+            expect(unescapeXmlTags(input)).toBe(input)
+        })
+
+        it('should preserve bold and italic syntax', () => {
+            const input = 'This is **bold** and *italic* and ***both***'
+            expect(escapeXmlTags(input)).toBe(input)
+            expect(unescapeXmlTags(input)).toBe(input)
+        })
+
+        it('should preserve unordered list syntax', () => {
+            const input = '- Step 1\n- Step 2\n- Step 3'
+            expect(escapeXmlTags(input)).toBe(input)
+            expect(unescapeXmlTags(input)).toBe(input)
+        })
+
+        it('should preserve ordered list syntax', () => {
+            const input = '1. First\n2. Second\n3. Third'
+            expect(escapeXmlTags(input)).toBe(input)
+            expect(unescapeXmlTags(input)).toBe(input)
+        })
+
+        it('should preserve code blocks', () => {
+            const input = '```python\nprint("hello")\n```'
+            expect(escapeXmlTags(input)).toBe(input)
+            expect(unescapeXmlTags(input)).toBe(input)
+        })
+
+        it('should preserve inline code', () => {
+            const input = 'Use `console.log()` for debugging'
+            expect(escapeXmlTags(input)).toBe(input)
+            expect(unescapeXmlTags(input)).toBe(input)
+        })
+
+        it('should preserve markdown links [text](url)', () => {
+            const input = 'See [the docs](https://example.com/path?q=1&r=2) for details'
+            expect(escapeXmlTags(input)).toBe(input)
+            expect(unescapeXmlTags(input)).toBe(input)
+        })
+
+        it('should roundtrip HTML <a> links', () => {
+            const input = 'Visit <a href="https://flowiseai.com">Flowise</a> for docs'
+            const escaped = escapeXmlTags(input)
+            expect(escaped).toContain('&lt;a href="https://flowiseai.com"&gt;')
+            expect(unescapeXmlTags(escaped)).toBe(input)
+        })
+
+        it('should preserve complex pasted markdown with XML tags', () => {
+            const input =
+                '## System Prompt\n\n' +
+                '<instructions>\n' +
+                '- Be helpful\n' +
+                '- Be **concise**\n' +
+                '</instructions>\n\n' +
+                'See [docs](https://example.com) for more info.\n' +
+                'Also visit <a href="https://flowiseai.com">Flowise</a>.\n\n' +
+                '```\ncode block\n```'
+            const escaped = escapeXmlTags(input)
+            expect(escaped).not.toBe(input)
+            const restored = unescapeXmlTags(escaped)
+            expect(restored).toBe(input)
+        })
+    })
+
     /**
      * Simulates the full editor save/reload cycle as it happens in RichInput:
      *
