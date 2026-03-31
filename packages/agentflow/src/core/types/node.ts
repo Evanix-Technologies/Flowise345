@@ -1,19 +1,4 @@
 // ============================================================================
-// Variable Types
-// ============================================================================
-
-export type VariableCategory = 'Chat Context' | 'Node Outputs' | 'Flow State'
-
-export interface Variable {
-    id: string
-    label: string
-    description?: string
-    category: VariableCategory
-    /** The path used for resolution, e.g. 'question', 'nodeId.data.instance' */
-    path: string
-}
-
-// ============================================================================
 // Node & Edge Data Types
 // ============================================================================
 

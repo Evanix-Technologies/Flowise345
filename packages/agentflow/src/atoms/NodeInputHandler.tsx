@@ -180,15 +180,23 @@ export function NodeInputHandler({
         ['string', 'password', 'code'].includes(inputParam?.type ?? '')
     )
 
-    // Map VariableItem[] to SuggestionItem[] for the inline autocomplete
+    // Map VariableItem[] to SuggestionItem[] for the inline autocomplete.
+    // ids must be unique for correct findIndex lookups and React keys — append
+    // a counter suffix when the same base id appears more than once.
     const suggestionItems: SuggestionItem[] | undefined = useMemo(() => {
         if (!inputParam?.acceptVariable || !variableItems || variableItems.length === 0) return undefined
-        return variableItems.map((v) => ({
-            id: v.value.replace(/{{|}}/g, ''),
-            label: v.label,
-            description: v.description,
-            category: v.category
-        }))
+        const idCount = new Map<string, number>()
+        return variableItems.map((v) => {
+            const baseId = v.value.replace(/{{|}}/g, '')
+            const count = idCount.get(baseId) ?? 0
+            idCount.set(baseId, count + 1)
+            return {
+                id: count === 0 ? baseId : `${baseId}__${count}`,
+                label: v.label,
+                description: v.description,
+                category: v.category
+            }
+        })
     }, [inputParam?.acceptVariable, variableItems])
 
     const renderInput = () => {
