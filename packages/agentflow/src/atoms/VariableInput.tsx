@@ -5,6 +5,7 @@ import { styled } from '@mui/material/styles'
 import { mergeAttributes } from '@tiptap/core'
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
 import Placeholder from '@tiptap/extension-placeholder'
+import { Markdown } from '@tiptap/markdown'
 import { EditorContent, useEditor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import javascript from 'highlight.js/lib/languages/javascript'
@@ -32,7 +33,7 @@ export interface VariableInputProps {
     onChange: (value: string) => void
     placeholder?: string
     disabled?: boolean
-    /** Number of visible text rows. When set, renders as a multiline editor and uses markdown serialization. */
+    /** Number of visible text rows. When set, renders as a multiline editor. */
     rows?: number
     /** Available variables for autocomplete when typing `{{` */
     suggestionItems?: SuggestionItem[]
@@ -131,9 +132,13 @@ const StyledEditorContent = styled(EditorContent, {
  *
  * When the user types `{{`, a suggestion dropdown appears anchored to the cursor
  * with available variables. Selecting a variable inserts it as a styled mention chip
- * that renders as `{{variableName}}` in the output text.
+ * that renders as `{{variableName}}` in the markdown output.
  *
- * Serialization matches the UI's RichInput behavior:
+ * Content is stored and emitted as markdown. The CustomMention extension's
+ * markdownTokenizer/parseMarkdown/renderMarkdown hooks ensure `{{variable}}` syntax
+ * survives markdown round-trips intact. Legacy HTML values are accepted for backward
+ * compatibility — TipTap renders them correctly and subsequent edits emit markdown.
+ *
  * This is the agentflow equivalent of the UI package's RichInput component.
  */
 export function VariableInput({ value, onChange, placeholder, disabled = false, rows, suggestionItems }: VariableInputProps) {
@@ -141,6 +146,10 @@ export function VariableInput({ value, onChange, placeholder, disabled = false, 
     useEffect(() => {
         onChangeRef.current = onChange
     }, [onChange])
+
+    // Track the last value we emitted (or loaded) to avoid re-setting content
+    // when the parent echoes our own onChange value back as the new prop.
+    const lastEmittedRef = useRef<string>(value || '')
 
     const suggestionConfig = useMemo(
         () => (suggestionItems?.length ? createSuggestionConfig(suggestionItems) : undefined),
@@ -152,6 +161,10 @@ export function VariableInput({ value, onChange, placeholder, disabled = false, 
             StarterKit.configure({
                 codeBlock: false
             }),
+            // Markdown extension enables storage.markdown.getMarkdown() serialization and
+            // activates the CustomMention markdownTokenizer so {{variable}} tokens survive
+            // markdown round-trips without corruption.
+            Markdown,
             CodeBlockLowlight.configure({ lowlight, enableTabIndentation: true, tabSize: 2 }),
             ...(placeholder ? [Placeholder.configure({ placeholder })] : []),
             ...(suggestionConfig
@@ -179,18 +192,19 @@ export function VariableInput({ value, onChange, placeholder, disabled = false, 
         content: value || '',
         editable: !disabled,
         onUpdate: ({ editor: ed }) => {
-            // Always use HTML serialization. The @tiptap/markdown v3 getMarkdown()
-            // returns empty strings (known issue with the MarkdownManager in v3.20.4).
-            // HTML round-trips correctly because the Mention extension's parseHTML
-            // matches on span[data-type="mention"] with data-id/data-label attributes.
-            onChangeRef.current(ed.getHTML())
+            const markdown = ed.storage.markdown.getMarkdown()
+            lastEmittedRef.current = markdown
+            onChangeRef.current(markdown)
         }
     })
 
-    // Sync external value changes into the editor (e.g. when parent state updates)
+    // Sync external value changes into the editor only when the parent provides
+    // a value that differs from what we last emitted (i.e. a genuine external change,
+    // not our own onChange being echoed back by the parent's state update).
     useEffect(() => {
-        if (editor && value !== editor.getHTML()) {
+        if (editor && value !== lastEmittedRef.current) {
             editor.commands.setContent(value, { emitUpdate: false })
+            lastEmittedRef.current = value
         }
     }, [editor, value])
 

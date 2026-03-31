@@ -3,7 +3,8 @@ import { render, screen } from '@testing-library/react'
 import { RichTextEditor } from './RichTextEditor'
 
 // --- Mock TipTap ---
-let capturedOnUpdate: ((args: { editor: { getHTML: () => string } }) => void) | undefined
+// Capture the onUpdate callback type matching the new markdown-based API
+let capturedOnUpdate: ((args: { editor: { storage: { markdown: { getMarkdown: () => string } } } }) => void) | undefined
 
 jest.mock('@tiptap/react', () => ({
     useEditor: (config: Record<string, unknown>) => {
@@ -12,7 +13,7 @@ jest.mock('@tiptap/react', () => ({
         return {
             setEditable: jest.fn(),
             commands: { focus: jest.fn(), setContent: jest.fn() },
-            getHTML: () => '<p>mock</p>'
+            storage: { markdown: { getMarkdown: () => 'mock markdown' } }
         }
     },
     EditorContent: ({ editor, ...rest }: { editor: unknown; [key: string]: unknown }) => (
@@ -38,6 +39,10 @@ jest.mock('@tiptap/extension-placeholder', () => ({
     default: { configure: jest.fn(() => 'Placeholder') }
 }))
 
+jest.mock('@tiptap/markdown', () => ({
+    Markdown: { configure: jest.fn(() => 'Markdown') }
+}))
+
 jest.mock('lowlight', () => ({
     common: {},
     createLowlight: jest.fn(() => ({ register: jest.fn() }))
@@ -52,26 +57,35 @@ beforeEach(() => {
 
 describe('RichTextEditor', () => {
     it('should render the editor container', () => {
-        render(<RichTextEditor value='<p>Hello</p>' onChange={mockOnChange} />)
+        render(<RichTextEditor value='Hello' onChange={mockOnChange} />)
 
         expect(screen.getByTestId('rich-text-editor')).toBeInTheDocument()
         expect(screen.getByTestId('tiptap-editor-content')).toBeInTheDocument()
     })
 
     it('should pass the editor instance to EditorContent', () => {
-        render(<RichTextEditor value='<p>Hello</p>' onChange={mockOnChange} />)
+        render(<RichTextEditor value='Hello' onChange={mockOnChange} />)
 
         expect(screen.getByTestId('tiptap-editor-content')).toHaveAttribute('data-has-editor', 'true')
     })
 
-    it('should call onChange when editor content updates', () => {
+    it('should call onChange with markdown when editor content updates', () => {
         render(<RichTextEditor value='' onChange={mockOnChange} />)
 
-        // Simulate TipTap onUpdate callback
         expect(capturedOnUpdate).toBeDefined()
-        capturedOnUpdate!({ editor: { getHTML: () => '<p>Updated</p>' } })
+        capturedOnUpdate!({ editor: { storage: { markdown: { getMarkdown: () => '**Updated**' } } } })
 
-        expect(mockOnChange).toHaveBeenCalledWith('<p>Updated</p>')
+        expect(mockOnChange).toHaveBeenCalledWith('**Updated**')
+    })
+
+    it('should not call onChange with HTML', () => {
+        render(<RichTextEditor value='' onChange={mockOnChange} />)
+
+        capturedOnUpdate!({ editor: { storage: { markdown: { getMarkdown: () => '## Heading' } } } })
+
+        // Must be the markdown string, not wrapped in HTML tags
+        expect(mockOnChange).toHaveBeenCalledWith('## Heading')
+        expect(mockOnChange).not.toHaveBeenCalledWith(expect.stringContaining('<h2>'))
     })
 
     it('should render with rows prop', () => {

@@ -4,6 +4,7 @@ import { Box } from '@mui/material'
 import { styled } from '@mui/material/styles'
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
 import Placeholder from '@tiptap/extension-placeholder'
+import { Markdown } from '@tiptap/markdown'
 import { EditorContent, useEditor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 // Individual language imports instead of lowlight/common to tree-shake highlight.js
@@ -23,10 +24,10 @@ lowlight.register('python', python)
 lowlight.register('typescript', typescript)
 
 export interface RichTextEditorProps {
-    /** HTML content */
+    /** Markdown string, or legacy HTML string for backward compatibility */
     value: string
-    /** Called with the updated HTML string on every edit */
-    onChange: (html: string) => void
+    /** Called with the updated markdown string on every edit */
+    onChange: (markdown: string) => void
     placeholder?: string
     disabled?: boolean
     /** Number of visible text rows (controls editor height) */
@@ -39,6 +40,7 @@ export interface RichTextEditorProps {
 
 const buildExtensions = (placeholder?: string) => [
     StarterKit.configure({ codeBlock: false }),
+    Markdown,
     CodeBlockLowlight.configure({ lowlight, enableTabIndentation: true, tabSize: 2 }),
     ...(placeholder ? [Placeholder.configure({ placeholder })] : [])
 ]
@@ -134,6 +136,10 @@ const StyledEditorContent = styled(EditorContent, {
 /**
  * A TipTap-based rich text editor atom with code block syntax highlighting.
  *
+ * Stores and emits content as markdown. Legacy HTML values (content starting with `<`)
+ * are accepted for backward compatibility — TipTap renders them correctly, and
+ * subsequent edits will emit markdown.
+ *
  * This is a "dumb" UI primitive — it receives all data via props and owns no
  * business logic. Variable/mention support lives in the features layer.
  */
@@ -144,6 +150,10 @@ export function RichTextEditor({ value, onChange, placeholder, disabled = false,
         onChangeRef.current = onChange
     }, [onChange])
 
+    // Track the last value we emitted (or loaded) to avoid re-setting content
+    // when the parent echoes our own onChange value back as the new prop.
+    const lastEmittedRef = useRef<string>(value || '')
+
     const extensions = useMemo(() => buildExtensions(placeholder), [placeholder])
 
     const editor = useEditor({
@@ -151,15 +161,20 @@ export function RichTextEditor({ value, onChange, placeholder, disabled = false,
         content: value,
         editable: !disabled,
         autofocus: autoFocus ? 'end' : false,
-        onUpdate: ({ editor: ed }: { editor: { getHTML: () => string } }) => {
-            onChangeRef.current(ed.getHTML())
+        onUpdate: ({ editor: ed }) => {
+            const markdown = ed.storage.markdown.getMarkdown()
+            lastEmittedRef.current = markdown
+            onChangeRef.current(markdown)
         }
     })
 
-    // Sync external value changes into the editor (e.g. when parent state updates)
+    // Sync external value changes into the editor only when the parent provides
+    // a value that differs from what we last emitted (i.e. a genuine external change,
+    // not our own onChange being echoed back by the parent's state update).
     useEffect(() => {
-        if (editor && value !== editor.getHTML()) {
+        if (editor && value !== lastEmittedRef.current) {
             editor.commands.setContent(value, { emitUpdate: false })
+            lastEmittedRef.current = value
         }
     }, [editor, value])
 
