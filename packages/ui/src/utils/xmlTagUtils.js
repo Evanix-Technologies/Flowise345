@@ -1,148 +1,35 @@
 /**
- * Utilities for preserving non-standard XML/HTML tags (e.g. <question>, <context>)
- * through TipTap's markdown roundtrip.
+ * Utilities for preserving XML/HTML tags in prompt text through TipTap's markdown roundtrip.
  *
  * Problem: When content like `<question>text</question>` is parsed by marked (via @tiptap/markdown),
- * the lexer tokenizes non-standard tags as HTML tokens. TipTap's parseHTMLToken then calls
- * generateJSON which creates DOM elements — since no extension recognizes custom tags,
- * the tag wrappers are stripped and only inner text survives.
+ * the lexer tokenizes tags as HTML tokens. TipTap's parseHTMLToken then calls generateJSON which
+ * creates DOM elements — unrecognized tags are stripped and only inner text survives.
  *
  * Solution: Three-step process:
- *   1. escapeCustomXmlTags: Convert non-standard tags to HTML entities before markdown parsing
+ *   1. escapeXmlTags: Convert all tags to HTML entities before markdown parsing
  *      so marked treats them as text, not HTML tokens.
  *   2. unescapeXmlEntities: After TipTap builds the ProseMirror document, walk the JSON tree
  *      and decode &lt;/&gt; back to </>  in text nodes for proper visual display.
- *   3. unescapeCustomXmlTags: After getMarkdown(), reverse any remaining entity-escaped tags
+ *   3. unescapeXmlTags: After getMarkdown(), reverse any remaining entity-escaped tags
  *      in the serialized output (safety net — typically a no-op).
  */
 
-// Standard HTML tags that should NOT be escaped — they have real HTML semantics
-// and are handled by TipTap extensions or the browser's HTML parser.
-const STANDARD_HTML_TAGS = new Set([
-    // Document structure
-    'html',
-    'head',
-    'body',
-    // Sectioning
-    'article',
-    'aside',
-    'footer',
-    'header',
-    'main',
-    'nav',
-    'section',
-    // Block content
-    'div',
-    'p',
-    'blockquote',
-    'pre',
-    'hr',
-    'figure',
-    'figcaption',
-    'details',
-    'summary',
-    'dialog',
-    // Headings
-    'h1',
-    'h2',
-    'h3',
-    'h4',
-    'h5',
-    'h6',
-    // Lists
-    'ul',
-    'ol',
-    'li',
-    'dl',
-    'dt',
-    'dd',
-    // Tables
-    'table',
-    'thead',
-    'tbody',
-    'tfoot',
-    'tr',
-    'th',
-    'td',
-    'caption',
-    'colgroup',
-    'col',
-    // Inline text
-    'span',
-    'a',
-    'strong',
-    'b',
-    'em',
-    'i',
-    'u',
-    's',
-    'strike',
-    'code',
-    'kbd',
-    'samp',
-    'var',
-    'mark',
-    'small',
-    'sub',
-    'sup',
-    'abbr',
-    'cite',
-    'dfn',
-    'q',
-    'time',
-    'data',
-    'ruby',
-    'rt',
-    'rp',
-    // Breaks
-    'br',
-    'wbr',
-    // Media & embeds
-    'img',
-    'picture',
-    'source',
-    'video',
-    'audio',
-    'track',
-    'iframe',
-    'embed',
-    'object',
-    'param',
-    'canvas',
-    'svg',
-    'math',
-    // Forms
-    'form',
-    'input',
-    'textarea',
-    'select',
-    'option',
-    'optgroup',
-    'button',
-    'label',
-    'fieldset',
-    'legend',
-    'datalist',
-    'output',
-    'meter',
-    'progress',
-    // Scripting (these are typically forbidden by sanitizers, but they ARE standard HTML)
-    'script',
-    'noscript',
-    'template',
-    'slot',
-    // Other
-    'link',
-    'meta',
-    'style',
-    'title',
-    'base',
-    // Deprecated but still recognized
-    'center',
-    'font',
-    'big',
-    'tt'
-])
+/**
+ * Detect if content is legacy HTML from old getHTML() storage vs markdown.
+ * Legacy content always starts with a block-level tag like <p>.
+ * Anchored with ^ to avoid matching intentional HTML tags inside user prompts.
+ *
+ * @example
+ * isHtmlContent('<p>some text</p>')       // → true  (legacy getHTML output)
+ * isHtmlContent('<instruction>text</instruction>') // → false (user prompt)
+ *
+ * @param {string} content - Content to check
+ * @returns {boolean} True if content looks like legacy HTML
+ */
+export const isHtmlContent = (content) => {
+    if (!content || typeof content !== 'string') return false
+    return /^\s*<(?:p|div|h[1-6]|ul|ol|blockquote|pre|table)\b/i.test(content)
+}
 
 /**
  * Regex matching opening, closing, and self-closing XML/HTML tags.
@@ -151,31 +38,28 @@ const STANDARD_HTML_TAGS = new Set([
 const XML_TAG_REGEX = /<(\/?)([a-zA-Z][a-zA-Z0-9_.-]*)(\s[^>]*)?(\/?)>/g
 
 /**
- * Escape non-standard XML/HTML tags to HTML entities so marked doesn't parse them as HTML.
- * Standard HTML tags are left untouched for normal processing.
+ * Escape all XML/HTML tags to HTML entities so marked doesn't parse them as HTML.
+ * In prompt editing context, users want tags preserved literally, not rendered.
  *
  * @example
- * escapeCustomXmlTags('<instructions>Be helpful</instructions>')
+ * escapeXmlTags('<instructions>Be helpful</instructions>')
  * // → '&lt;instructions&gt;Be helpful&lt;/instructions&gt;'
  *
- * escapeCustomXmlTags('<div><question>text</question></div>')
- * // → '<div>&lt;question&gt;text&lt;/question&gt;</div>'
+ * escapeXmlTags('<div><question>text</question></div>')
+ * // → '&lt;div&gt;&lt;question&gt;text&lt;/question&gt;&lt;/div&gt;'
  *
  * @param {string} text - Raw markdown/text content
- * @returns {string} Content with non-standard tags escaped to HTML entities
+ * @returns {string} Content with tags escaped to HTML entities
  */
-export function escapeCustomXmlTags(text) {
+export function escapeXmlTags(text) {
     if (!text || typeof text !== 'string') return text
     return text.replace(XML_TAG_REGEX, (match, slash, tagName, attrs, selfClose) => {
-        if (STANDARD_HTML_TAGS.has(tagName.toLowerCase())) return match
         return `&lt;${slash}${tagName}${attrs || ''}${selfClose}&gt;`
     })
 }
 
 /**
- * Unescape non-standard XML tag entities in ProseMirror JSON text nodes.
- * Delegates to unescapeCustomXmlTags so only non-standard tags are affected —
- * intentional literal entities (e.g. "&lt;div&gt;" in a prompt about HTML) are preserved.
+ * Unescape XML tag entities in ProseMirror JSON text nodes.
  * Call this after setContent() to fix the visual display in the editor.
  * Mutates the JSON in-place and returns it.
  *
@@ -191,7 +75,7 @@ export function escapeCustomXmlTags(text) {
  */
 export function unescapeXmlEntities(json) {
     if (json.text) {
-        json.text = unescapeCustomXmlTags(json.text)
+        json.text = unescapeXmlTags(json.text)
     }
     if (json.content) {
         json.content.forEach(unescapeXmlEntities)
@@ -200,27 +84,24 @@ export function unescapeXmlEntities(json) {
 }
 
 /**
- * Unescape non-standard XML/HTML tags after markdown serialization.
- * Only targets non-standard tags — standard HTML entities like &lt;div&gt; are
- * left intact so intentional literal entities in user prompts are preserved.
+ * Unescape all entity-escaped XML/HTML tags after markdown serialization.
  *
  * @example
- * unescapeCustomXmlTags('&lt;question&gt;text&lt;/question&gt;')
+ * unescapeXmlTags('&lt;question&gt;text&lt;/question&gt;')
  * // → '<question>text</question>'
  *
- * unescapeCustomXmlTags('&lt;div&gt;text&lt;/div&gt;')
- * // → '&lt;div&gt;text&lt;/div&gt;'  (standard HTML, left unchanged)
+ * unescapeXmlTags('&lt;div&gt;text&lt;/div&gt;')
+ * // → '<div>text</div>'
  *
- * unescapeCustomXmlTags('<question>text</question>')
+ * unescapeXmlTags('<question>text</question>')
  * // → '<question>text</question>'  (raw tags pass through unchanged)
  *
  * @param {string} text - Markdown output from TipTap
- * @returns {string} Content with non-standard tags restored to angle brackets
+ * @returns {string} Content with tags restored to angle brackets
  */
-export function unescapeCustomXmlTags(text) {
+export function unescapeXmlTags(text) {
     if (!text || typeof text !== 'string') return text
     return text.replace(/&lt;(\/?)([a-zA-Z][a-zA-Z0-9_.-]*)(\s.*?)?(\/?)&gt;/g, (match, slash, tagName, attrs, selfClose) => {
-        if (STANDARD_HTML_TAGS.has(tagName.toLowerCase())) return match
         return `<${slash}${tagName}${attrs || ''}${selfClose}>`
     })
 }

@@ -248,8 +248,10 @@ export const resolveVariables = async (
         if (typeof value !== 'string') return value
 
         // Convert legacy HTML content to markdown, preserving any markdown syntax within.
-        // Only match standard HTML tags to avoid stripping intentional XML tags like <question>, <context> etc.
-        if (/<(?:p|div|span|h[1-6]|ul|ol|li|br|code|pre|blockquote|table|strong|em)\b[^>]*>/i.test(value)) {
+        // Legacy content from old getHTML() starts with a TipTap block tag (e.g. <p>text</p>).
+        // Anchor with ^ to avoid matching intentional HTML/XML tags in user prompts
+        // (e.g. <instruction><div>...</div></instruction>).
+        if (/^\s*<(?:p|div|h[1-6]|ul|ol|blockquote|pre|table)\b/i.test(value)) {
             const turndownService = new TurndownService()
             // Disable escaping so markdown characters (e.g. ###, -, *) inside HTML are preserved as-is
             turndownService.escape = (str: string) => str

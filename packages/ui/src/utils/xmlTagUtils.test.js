@@ -1,59 +1,90 @@
-import { escapeCustomXmlTags, unescapeXmlEntities, unescapeCustomXmlTags } from './xmlTagUtils'
+import { isHtmlContent, escapeXmlTags, unescapeXmlEntities, unescapeXmlTags } from './xmlTagUtils'
 
 describe('xmlTagUtils', () => {
-    describe('escapeCustomXmlTags', () => {
-        it('should escape non-standard opening tags to entities', () => {
-            expect(escapeCustomXmlTags('<question>text</question>')).toBe('&lt;question&gt;text&lt;/question&gt;')
+    describe('isHtmlContent', () => {
+        it('should detect legacy getHTML() output starting with <p>', () => {
+            expect(isHtmlContent('<p>some text</p>')).toBe(true)
         })
 
-        it('should escape non-standard self-closing tags', () => {
-            expect(escapeCustomXmlTags('<my-separator />')).toBe('&lt;my-separator /&gt;')
+        it('should detect legacy output starting with <div>', () => {
+            expect(isHtmlContent('<div>content</div>')).toBe(true)
+        })
+
+        it('should detect legacy output with leading whitespace', () => {
+            expect(isHtmlContent('  <p>text</p>')).toBe(true)
+        })
+
+        it('should NOT detect user prompts starting with custom tags', () => {
+            expect(isHtmlContent('<instruction>Help me</instruction>')).toBe(false)
+        })
+
+        it('should NOT detect prompts that contain HTML tags mid-content', () => {
+            expect(isHtmlContent('<instruction><div>Test</div></instruction>')).toBe(false)
+        })
+
+        it('should return false for plain text', () => {
+            expect(isHtmlContent('just plain text')).toBe(false)
+        })
+
+        it('should return false for empty/null/undefined', () => {
+            expect(isHtmlContent('')).toBe(false)
+            expect(isHtmlContent(null)).toBe(false)
+            expect(isHtmlContent(undefined)).toBe(false)
+        })
+    })
+
+    describe('escapeXmlTags', () => {
+        it('should escape opening and closing tags to entities', () => {
+            expect(escapeXmlTags('<question>text</question>')).toBe('&lt;question&gt;text&lt;/question&gt;')
+        })
+
+        it('should escape self-closing tags', () => {
+            expect(escapeXmlTags('<my-separator />')).toBe('&lt;my-separator /&gt;')
         })
 
         it('should escape tags with attributes', () => {
-            expect(escapeCustomXmlTags('<context type="user">hello</context>')).toBe('&lt;context type="user"&gt;hello&lt;/context&gt;')
+            expect(escapeXmlTags('<context type="user">hello</context>')).toBe('&lt;context type="user"&gt;hello&lt;/context&gt;')
         })
 
-        it('should NOT escape standard HTML tags', () => {
-            const html = '<div><p>text</p><strong>bold</strong></div>'
-            expect(escapeCustomXmlTags(html)).toBe(html)
+        it('should escape standard HTML tags too', () => {
+            expect(escapeXmlTags('<div><p>text</p></div>')).toBe('&lt;div&gt;&lt;p&gt;text&lt;/p&gt;&lt;/div&gt;')
         })
 
-        it('should handle mixed standard and custom tags', () => {
+        it('should escape all tags in mixed content', () => {
             const input = '# Heading\n<question>What is {{name}}?</question>\n<p>paragraph</p>'
-            const expected = '# Heading\n&lt;question&gt;What is {{name}}?&lt;/question&gt;\n<p>paragraph</p>'
-            expect(escapeCustomXmlTags(input)).toBe(expected)
+            const expected = '# Heading\n&lt;question&gt;What is {{name}}?&lt;/question&gt;\n&lt;p&gt;paragraph&lt;/p&gt;'
+            expect(escapeXmlTags(input)).toBe(expected)
         })
 
-        it('should handle nested custom tags', () => {
+        it('should handle nested tags', () => {
             const input = '<outer><inner>text</inner></outer>'
             const expected = '&lt;outer&gt;&lt;inner&gt;text&lt;/inner&gt;&lt;/outer&gt;'
-            expect(escapeCustomXmlTags(input)).toBe(expected)
+            expect(escapeXmlTags(input)).toBe(expected)
         })
 
         it('should return empty/null/undefined as-is', () => {
-            expect(escapeCustomXmlTags('')).toBe('')
-            expect(escapeCustomXmlTags(null)).toBe(null)
-            expect(escapeCustomXmlTags(undefined)).toBe(undefined)
+            expect(escapeXmlTags('')).toBe('')
+            expect(escapeXmlTags(null)).toBe(null)
+            expect(escapeXmlTags(undefined)).toBe(undefined)
         })
 
         it('should handle text with no tags', () => {
-            expect(escapeCustomXmlTags('just plain text')).toBe('just plain text')
+            expect(escapeXmlTags('just plain text')).toBe('just plain text')
         })
 
         it('should handle tags with dots and hyphens in names', () => {
-            expect(escapeCustomXmlTags('<my.tag>text</my.tag>')).toBe('&lt;my.tag&gt;text&lt;/my.tag&gt;')
-            expect(escapeCustomXmlTags('<my-tag>text</my-tag>')).toBe('&lt;my-tag&gt;text&lt;/my-tag&gt;')
+            expect(escapeXmlTags('<my.tag>text</my.tag>')).toBe('&lt;my.tag&gt;text&lt;/my.tag&gt;')
+            expect(escapeXmlTags('<my-tag>text</my-tag>')).toBe('&lt;my-tag&gt;text&lt;/my-tag&gt;')
         })
 
         it('should not double-escape already-escaped content', () => {
             const alreadyEscaped = '&lt;question&gt;text&lt;/question&gt;'
-            expect(escapeCustomXmlTags(alreadyEscaped)).toBe(alreadyEscaped)
+            expect(escapeXmlTags(alreadyEscaped)).toBe(alreadyEscaped)
         })
     })
 
     describe('unescapeXmlEntities', () => {
-        it('should decode entities in text nodes', () => {
+        it('should unescape entities in text nodes', () => {
             const json = {
                 type: 'doc',
                 content: [
@@ -65,6 +96,20 @@ describe('xmlTagUtils', () => {
             }
             unescapeXmlEntities(json)
             expect(json.content[0].content[0].text).toBe('<question>What?</question>')
+        })
+
+        it('should unescape standard HTML tag entities too', () => {
+            const json = {
+                type: 'doc',
+                content: [
+                    {
+                        type: 'paragraph',
+                        content: [{ type: 'text', text: '&lt;div&gt;content&lt;/div&gt;' }]
+                    }
+                ]
+            }
+            unescapeXmlEntities(json)
+            expect(json.content[0].content[0].text).toBe('<div>content</div>')
         })
 
         it('should handle nested content', () => {
@@ -104,83 +149,41 @@ describe('xmlTagUtils', () => {
             const json = { type: 'doc', content: [] }
             expect(unescapeXmlEntities(json)).toBe(json)
         })
-
-        it('should preserve intentional standard HTML entities', () => {
-            // User prompt that teaches about HTML:
-            //   <instructions>
-            //   When generating HTML, use &lt;div&gt; for containers and &lt;span&gt; for inline elements.
-            //   </instructions>
-            //
-            // After escapeCustomXmlTags + marked parsing, the ProseMirror JSON has:
-            //   - &lt;instructions&gt; (escaped custom tag) → should be unescaped to <instructions>
-            //   - &lt;div&gt; (intentional literal entity) → should stay as &lt;div&gt;
-            const json = {
-                type: 'doc',
-                content: [
-                    {
-                        type: 'paragraph',
-                        content: [{ type: 'text', text: '&lt;instructions&gt;' }]
-                    },
-                    {
-                        type: 'paragraph',
-                        content: [
-                            {
-                                type: 'text',
-                                text: 'When generating HTML, use &lt;div&gt; for containers and &lt;span&gt; for inline elements.'
-                            }
-                        ]
-                    },
-                    {
-                        type: 'paragraph',
-                        content: [{ type: 'text', text: '&lt;/instructions&gt;' }]
-                    }
-                ]
-            }
-            unescapeXmlEntities(json)
-            // Custom tags are unescaped for display
-            expect(json.content[0].content[0].text).toBe('<instructions>')
-            expect(json.content[2].content[0].text).toBe('</instructions>')
-            // Standard HTML entities are preserved — user intended them as literal text
-            expect(json.content[1].content[0].text).toBe(
-                'When generating HTML, use &lt;div&gt; for containers and &lt;span&gt; for inline elements.'
-            )
-        })
     })
 
-    describe('unescapeCustomXmlTags', () => {
-        it('should unescape entity-escaped non-standard tags', () => {
-            expect(unescapeCustomXmlTags('&lt;question&gt;text&lt;/question&gt;')).toBe('<question>text</question>')
+    describe('unescapeXmlTags', () => {
+        it('should unescape entity-escaped tags', () => {
+            expect(unescapeXmlTags('&lt;question&gt;text&lt;/question&gt;')).toBe('<question>text</question>')
+        })
+
+        it('should unescape standard HTML tags too', () => {
+            expect(unescapeXmlTags('&lt;div&gt;text&lt;/div&gt;')).toBe('<div>text</div>')
         })
 
         it('should unescape tags with attributes', () => {
-            expect(unescapeCustomXmlTags('&lt;context type="user"&gt;hello&lt;/context&gt;')).toBe('<context type="user">hello</context>')
+            expect(unescapeXmlTags('&lt;context type="user"&gt;hello&lt;/context&gt;')).toBe('<context type="user">hello</context>')
         })
 
         it('should unescape tags with attributes containing ampersands', () => {
-            expect(unescapeCustomXmlTags('&lt;datasource url="foo&amp;bar=1"&gt;text&lt;/datasource&gt;')).toBe(
+            expect(unescapeXmlTags('&lt;datasource url="foo&amp;bar=1"&gt;text&lt;/datasource&gt;')).toBe(
                 '<datasource url="foo&amp;bar=1">text</datasource>'
             )
-        })
-
-        it('should NOT unescape standard HTML entity-escaped tags', () => {
-            const input = '&lt;div&gt;text&lt;/div&gt;'
-            expect(unescapeCustomXmlTags(input)).toBe(input)
         })
 
         it('should handle mixed content', () => {
             const input = '# Heading\n&lt;question&gt;text&lt;/question&gt;\nsome markdown'
             const expected = '# Heading\n<question>text</question>\nsome markdown'
-            expect(unescapeCustomXmlTags(input)).toBe(expected)
+            expect(unescapeXmlTags(input)).toBe(expected)
         })
 
         it('should return empty/null/undefined as-is', () => {
-            expect(unescapeCustomXmlTags('')).toBe('')
-            expect(unescapeCustomXmlTags(null)).toBe(null)
-            expect(unescapeCustomXmlTags(undefined)).toBe(undefined)
+            expect(unescapeXmlTags('')).toBe('')
+            expect(unescapeXmlTags(null)).toBe(null)
+            expect(unescapeXmlTags(undefined)).toBe(undefined)
         })
 
         it('should pass through raw (unescaped) tags unchanged', () => {
-            expect(unescapeCustomXmlTags('<question>text</question>')).toBe('<question>text</question>')
+            expect(unescapeXmlTags('<question>text</question>')).toBe('<question>text</question>')
         })
     })
 
@@ -193,14 +196,14 @@ describe('xmlTagUtils', () => {
             '# Title\n<question>{{input}}</question>\n**bold** text',
             '<my-component />',
             'No tags here, just **markdown**',
-            '<div>standard html stays</div>',
+            '<div>standard html preserved</div>',
             '<example>This has <strong>standard</strong> HTML inside</example>'
         ]
 
         cases.forEach((input) => {
             it(`should roundtrip: ${input.substring(0, 50)}...`, () => {
-                const escaped = escapeCustomXmlTags(input)
-                const restored = unescapeCustomXmlTags(escaped)
+                const escaped = escapeXmlTags(input)
+                const restored = unescapeXmlTags(escaped)
                 expect(restored).toBe(input)
             })
         })
@@ -210,21 +213,21 @@ describe('xmlTagUtils', () => {
      * Simulates the full editor save/reload cycle as it happens in RichInput:
      *
      *   LOAD (saved value → editor):
-     *     1. escapeCustomXmlTags(savedValue)     — entities prevent marked from stripping tags
-     *     2. setContent(escaped, 'markdown')      — marked parses entities as text nodes
-     *     3. unescapeXmlEntities(editor.getJSON())  — fix "&lt;" → "<" in ProseMirror JSON
-     *     4. setContent(decodedJson)              — editor now displays <question> correctly
+     *     1. escapeXmlTags(savedValue)              — entities prevent marked from stripping tags
+     *     2. setContent(escaped, 'markdown')         — marked parses entities as text nodes
+     *     3. unescapeXmlEntities(editor.getJSON())   — fix "&lt;" → "<" in ProseMirror JSON
+     *     4. setContent(decodedJson)                 — editor now displays <question> correctly
      *
      *   SAVE (editor → saved value):
-     *     5. editor.getMarkdown()                 — serializes text nodes with raw "<"
-     *     6. unescapeCustomXmlTags(markdown)       — safety net for any remaining entities
-     *     7. onChange(result)                      — written to flow JSON
+     *     5. editor.getMarkdown()                    — serializes text nodes with raw "<"
+     *     6. unescapeXmlTags(markdown)               — safety net for any remaining entities
+     *     7. onChange(result)                         — written to flow JSON
      */
     describe('full editor save/reload cycle', () => {
         function simulateEditorCycle(userInput) {
             // --- LOAD ---
             // Step 1: escape XML tags to entities
-            const escaped = escapeCustomXmlTags(userInput)
+            const escaped = escapeXmlTags(userInput)
             // Steps 2-3: marked creates text nodes with entities, then unescapeXmlEntities fixes them
             const mockJson = {
                 type: 'doc',
@@ -239,7 +242,7 @@ describe('xmlTagUtils', () => {
             // Step 5: getMarkdown() outputs text node content as-is (no escaping)
             const markdownOutput = editorDisplayText
             // Step 6: unescape safety net
-            return unescapeCustomXmlTags(markdownOutput)
+            return unescapeXmlTags(markdownOutput)
         }
 
         it('should preserve XML-tagged prompt', () => {
@@ -267,13 +270,13 @@ describe('xmlTagUtils', () => {
             expect(simulateEditorCycle(userInput)).toBe(userInput)
         })
 
-        it('should leave standard HTML unchanged', () => {
-            const userInput = '<div>standard html stays</div>'
+        it('should preserve standard HTML tags too', () => {
+            const userInput = '<div>content in a div</div>'
             expect(simulateEditorCycle(userInput)).toBe(userInput)
         })
 
         it('should handle mixed custom and standard tags', () => {
-            const userInput = '<example>This has <strong>standard</strong> HTML inside</example>'
+            const userInput = '<example>This has <strong>bold</strong> HTML inside</example>'
             expect(simulateEditorCycle(userInput)).toBe(userInput)
         })
 
