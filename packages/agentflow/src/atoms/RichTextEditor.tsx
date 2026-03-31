@@ -162,7 +162,7 @@ export function RichTextEditor({ value, onChange, placeholder, disabled = false,
         editable: !disabled,
         autofocus: autoFocus ? 'end' : false,
         onUpdate: ({ editor: ed }) => {
-            const markdown = ed.storage.markdown.getMarkdown()
+            const markdown = ed.getMarkdown()
             lastEmittedRef.current = markdown
             onChangeRef.current(markdown)
         }

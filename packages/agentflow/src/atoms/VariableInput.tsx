@@ -192,7 +192,7 @@ export function VariableInput({ value, onChange, placeholder, disabled = false, 
         content: value || '',
         editable: !disabled,
         onUpdate: ({ editor: ed }) => {
-            const markdown = ed.storage.markdown.getMarkdown()
+            const markdown = ed.getMarkdown()
             lastEmittedRef.current = markdown
             onChangeRef.current(markdown)
         }

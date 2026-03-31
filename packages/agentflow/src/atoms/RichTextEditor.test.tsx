@@ -3,8 +3,9 @@ import { render, screen } from '@testing-library/react'
 import { RichTextEditor } from './RichTextEditor'
 
 // --- Mock TipTap ---
-// Capture the onUpdate callback type matching the new markdown-based API
-let capturedOnUpdate: ((args: { editor: { storage: { markdown: { getMarkdown: () => string } } } }) => void) | undefined
+// editor.getMarkdown() is added directly on the Editor interface by @tiptap/markdown
+// via module augmentation — it is NOT nested under storage.markdown.
+let capturedOnUpdate: ((args: { editor: { getMarkdown: () => string } }) => void) | undefined
 
 jest.mock('@tiptap/react', () => ({
     useEditor: (config: Record<string, unknown>) => {
@@ -13,7 +14,7 @@ jest.mock('@tiptap/react', () => ({
         return {
             setEditable: jest.fn(),
             commands: { focus: jest.fn(), setContent: jest.fn() },
-            storage: { markdown: { getMarkdown: () => 'mock markdown' } }
+            getMarkdown: () => 'mock markdown'
         }
     },
     EditorContent: ({ editor, ...rest }: { editor: unknown; [key: string]: unknown }) => (
@@ -73,7 +74,7 @@ describe('RichTextEditor', () => {
         render(<RichTextEditor value='' onChange={mockOnChange} />)
 
         expect(capturedOnUpdate).toBeDefined()
-        capturedOnUpdate!({ editor: { storage: { markdown: { getMarkdown: () => '**Updated**' } } } })
+        capturedOnUpdate!({ editor: { getMarkdown: () => '**Updated**' } })
 
         expect(mockOnChange).toHaveBeenCalledWith('**Updated**')
     })
@@ -81,7 +82,7 @@ describe('RichTextEditor', () => {
     it('should not call onChange with HTML', () => {
         render(<RichTextEditor value='' onChange={mockOnChange} />)
 
-        capturedOnUpdate!({ editor: { storage: { markdown: { getMarkdown: () => '## Heading' } } } })
+        capturedOnUpdate!({ editor: { getMarkdown: () => '## Heading' } })
 
         // Must be the markdown string, not wrapped in HTML tags
         expect(mockOnChange).toHaveBeenCalledWith('## Heading')

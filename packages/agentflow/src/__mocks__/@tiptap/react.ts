@@ -2,11 +2,7 @@ import { createElement, forwardRef } from 'react'
 
 export const useEditor = (config?: Record<string, unknown>) => ({
     getHTML: () => (config?.content as string) ?? '<p></p>',
-    storage: {
-        markdown: {
-            getMarkdown: () => (config?.content as string) ?? ''
-        }
-    },
+    getMarkdown: () => (config?.content as string) ?? '',
     setEditable: jest.fn(),
     commands: { focus: jest.fn(), setContent: jest.fn() },
     _onUpdate: config?.onUpdate
