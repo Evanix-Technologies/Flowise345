@@ -140,7 +140,7 @@ abstract class SSOBase {
             }
             return done(null, loggedInUser as Express.User, { message: 'Logged in Successfully' })
         } catch (error) {
-            const message = error instanceof Error ? error.message : ssoProviderName + ' Login failed! Please contact your administrator.'
+            const message = error instanceof InternalFlowiseError ? error.message : ssoProviderName + ' Login failed! Please contact your administrator.'
             return done({ name: 'SSO_LOGIN_FAILED', message }, undefined)
         } finally {
             if (queryRunner && !queryRunner.isReleased) await queryRunner.release()
