@@ -1,7 +1,6 @@
 // GoogleSSO.ts
 import SSOBase from './SSOBase'
 import passport from 'passport'
-import logger from '../../utils/logger'
 import { Profile, Strategy as OpenIDConnectStrategy, VerifyCallback } from 'passport-openidconnect'
 import auditService from '../services/audit'
 import { ErrorMessage, LoggedInUser, LoginActivityCode } from '../Interface.Enterprise'
@@ -50,13 +49,10 @@ class GoogleSSO extends SSOBase {
                         refreshToken: string,
                         done: VerifyCallback
                     ) => {
-                        logger.debug(`[Google SSO] Verify callback invoked for profile id: ${profile.id}`)
                         if (profile.emails && profile.emails.length > 0) {
                             const email = profile.emails[0].value
-                            logger.debug(`[Google SSO] Resolved email: ${email}`)
                             return this.verifyAndLogin(this.app, email, done, profile, accessToken, refreshToken)
                         } else {
-                            logger.error(`[Google SSO] No email found in profile: ${JSON.stringify(profile)}`)
                             await auditService.recordLoginActivity(
                                 '<empty>',
                                 LoginActivityCode.UNKNOWN_USER,
