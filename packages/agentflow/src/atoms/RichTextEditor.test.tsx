@@ -79,7 +79,7 @@ describe('RichTextEditor', () => {
         expect(mockOnChange).toHaveBeenCalledWith('**Updated**')
     })
 
-    it('should not call onChange with HTML', () => {
+    it('should call onChange with Markdown', () => {
         render(<RichTextEditor value='' onChange={mockOnChange} />)
 
         capturedOnUpdate!({ editor: { getMarkdown: () => '## Heading' } })

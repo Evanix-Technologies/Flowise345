@@ -200,7 +200,7 @@ describe('ExpandTextDialog', () => {
         })
 
         it('should render plain TextField for non-string, non-code input types', () => {
-            render(<ExpandTextDialog open={true} value='Hello' inputType='number' onConfirm={mockOnConfirm} onCancel={mockOnCancel} />)
+            render(<ExpandTextDialog open={true} value='42' inputType='number' onConfirm={mockOnConfirm} onCancel={mockOnCancel} />)
 
             expect(screen.getByTestId('expand-content-input')).toBeInTheDocument()
             expect(screen.queryByTestId('rich-text-editor')).not.toBeInTheDocument()
@@ -263,7 +263,7 @@ describe('ExpandTextDialog', () => {
         })
 
         it('should not show Edit/Source toggle for non-string input types', () => {
-            render(<ExpandTextDialog open={true} value='Hello' inputType='number' onConfirm={mockOnConfirm} onCancel={mockOnCancel} />)
+            render(<ExpandTextDialog open={true} value='42' inputType='number' onConfirm={mockOnConfirm} onCancel={mockOnCancel} />)
 
             expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
             expect(screen.queryByRole('button', { name: 'Source' })).not.toBeInTheDocument()
