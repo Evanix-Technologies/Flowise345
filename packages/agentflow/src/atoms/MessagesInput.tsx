@@ -7,8 +7,10 @@ import { IconArrowsMaximize, IconPlus, IconTrash, IconVariable } from '@tabler/i
 import type { InputParam, NodeData } from '@/core/types'
 
 import { ExpandTextDialog } from './ExpandTextDialog'
-import { RichTextEditor } from './RichTextEditor.lazy'
 import { useStableKeys } from './useStableKeys'
+import type { SuggestionItem } from './VariableInput'
+import { VariableInput } from './VariableInput'
+import type { VariableItem } from './VariablePicker'
 
 const MESSAGE_ROLES = [
     { label: 'System', value: 'system' },
@@ -28,6 +30,7 @@ export interface MessagesInputProps {
     inputParam: InputParam
     data: NodeData
     disabled?: boolean
+    variableItems?: VariableItem[]
     onDataChange?: (params: { inputParam: InputParam; newValue: unknown }) => void
 }
 
@@ -36,7 +39,7 @@ export interface MessagesInputProps {
  * Each entry has a role dropdown (system/assistant/developer/user)
  * and a multiline content textarea with variable support ({{ variable }} syntax).
  */
-export function MessagesInput({ inputParam, data, disabled = false, onDataChange }: MessagesInputProps) {
+export function MessagesInput({ inputParam, data, disabled = false, variableItems, onDataChange }: MessagesInputProps) {
     const theme = useTheme()
 
     const messages = useMemo(
@@ -45,6 +48,22 @@ export function MessagesInput({ inputParam, data, disabled = false, onDataChange
     )
 
     const { keys: effectiveKeys, removeKey } = useStableKeys(messages.length, 'message')
+
+    const suggestionItems: SuggestionItem[] | undefined = useMemo(() => {
+        if (!variableItems || variableItems.length === 0) return undefined
+        const idCount = new Map<string, number>()
+        return variableItems.map((v) => {
+            const baseId = v.value.replace(/{{|}}/g, '')
+            const count = idCount.get(baseId) ?? 0
+            idCount.set(baseId, count + 1)
+            return {
+                id: count === 0 ? baseId : `${baseId}__${count}`,
+                label: v.label,
+                description: v.description,
+                category: v.category
+            }
+        })
+    }, [variableItems])
 
     const handleRoleChange = useCallback(
         (index: number, role: string) => {
@@ -200,12 +219,13 @@ export function MessagesInput({ inputParam, data, disabled = false, onDataChange
                                 <IconArrowsMaximize />
                             </IconButton>
                         </div>
-                        <RichTextEditor
+                        <VariableInput
                             value={message.content}
-                            onChange={(html) => handleContentChange(index, html)}
+                            onChange={(v) => handleContentChange(index, v)}
                             placeholder='Message content (supports {{ variable }} syntax)'
                             disabled={disabled}
                             rows={4}
+                            suggestionItems={suggestionItems}
                         />
                     </Box>
                 </Box>
@@ -233,6 +253,7 @@ export function MessagesInput({ inputParam, data, disabled = false, onDataChange
                     placeholder='Message content (supports {{ variable }} syntax)'
                     disabled={disabled}
                     inputType='string'
+                    suggestionItems={suggestionItems}
                     onConfirm={handleExpandConfirm}
                     onCancel={handleExpandCancel}
                 />
