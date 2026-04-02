@@ -302,6 +302,7 @@ export interface IncomingAgentflowInput extends Omit<IncomingInput, 'question'> 
     question?: string
     form?: Record<string, any>
     humanInput?: IHumanInput
+    webhook?: Record<string, any>
 }
 
 export interface IActiveChatflows {

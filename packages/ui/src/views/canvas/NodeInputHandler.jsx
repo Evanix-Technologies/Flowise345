@@ -1,6 +1,7 @@
 import PropTypes from 'prop-types'
 import { Handle, Position, useUpdateNodeInternals } from 'reactflow'
 import { useEffect, useRef, useState, useContext } from 'react'
+import { useParams } from 'react-router-dom'
 import { useSelector, useDispatch } from 'react-redux'
 import { cloneDeep } from 'lodash'
 import showdown from 'showdown'
@@ -21,10 +22,21 @@ import {
     DialogContent,
     DialogActions
 } from '@mui/material'
-import { useGridApiContext } from '@mui/x-data-grid'
 import IconAutoFixHigh from '@mui/icons-material/AutoFixHigh'
+import InputAdornment from '@mui/material/InputAdornment'
 import { tooltipClasses } from '@mui/material/Tooltip'
-import { IconWand, IconVariable, IconArrowsMaximize, IconEdit, IconAlertTriangle, IconBulb, IconRefresh, IconX } from '@tabler/icons-react'
+import { useGridApiContext } from '@mui/x-data-grid'
+import {
+    IconWand,
+    IconVariable,
+    IconArrowsMaximize,
+    IconEdit,
+    IconAlertTriangle,
+    IconBulb,
+    IconRefresh,
+    IconX,
+    IconCopy
+} from '@tabler/icons-react'
 import { Tabs } from '@mui/base/Tabs'
 import Autocomplete, { autocompleteClasses } from '@mui/material/Autocomplete'
 
@@ -121,6 +133,10 @@ const NodeInputHandler = ({
     onHideNodeInfoDialog,
     onCustomDataChange
 }) => {
+    const { id: chatflowIdFromParams } = useParams()
+    const canvasChatflow = useSelector((state) => state.canvas.chatflow)
+    const chatflowId = chatflowIdFromParams || canvasChatflow?.id
+
     const theme = useTheme()
     const customization = useSelector((state) => state.customization)
     const ref = useRef(null)
@@ -777,6 +793,8 @@ const NodeInputHandler = ({
         updateNodeInternals(data.id)
     }, [data.id, position, updateNodeInternals])
 
+    const webhookUrl = chatflowId ? `${baseURL}/api/v1/webhook/${chatflowId}` : 'Save the flow first to generate the webhook URL'
+
     return (
         <div ref={ref}>
             {inputAnchor && (
@@ -1077,7 +1095,49 @@ const NodeInputHandler = ({
                             </>
                         )}
 
-                        {(inputParam.type === 'string' || inputParam.type === 'password' || inputParam.type === 'number') &&
+                        {inputParam.name === 'webhookURL' && (
+                            <TextField
+                                fullWidth
+                                size='small'
+                                disabled
+                                value={webhookUrl}
+                                sx={{ mt: 1 }}
+                                InputProps={{
+                                    readOnly: true,
+                                    endAdornment: chatflowId ? (
+                                        <InputAdornment position='end'>
+                                            <Tooltip title='Copy URL'>
+                                                <IconButton
+                                                    size='small'
+                                                    onClick={() => {
+                                                        navigator.clipboard.writeText(webhookUrl).then(
+                                                            () =>
+                                                                enqueueSnackbar({
+                                                                    message: 'URL copied!',
+                                                                    options: {
+                                                                        key: new Date().getTime() + Math.random(),
+                                                                        variant: 'success'
+                                                                    }
+                                                                }),
+                                                            () =>
+                                                                enqueueSnackbar({
+                                                                    message: 'Failed to copy URL.',
+                                                                    options: { key: new Date().getTime() + Math.random(), variant: 'error' }
+                                                                })
+                                                        )
+                                                    }}
+                                                >
+                                                    <IconCopy size={16} />
+                                                </IconButton>
+                                            </Tooltip>
+                                        </InputAdornment>
+                                    ) : undefined
+                                }}
+                            />
+                        )}
+
+                        {inputParam.name !== 'webhookURL' &&
+                            (inputParam.type === 'string' || inputParam.type === 'password' || inputParam.type === 'number') &&
                             (inputParam?.acceptVariable &&
                             (window.location.href.includes('v2/agentcanvas') || window.location.href.includes('v2/marketplace')) ? (
                                 <RichInput

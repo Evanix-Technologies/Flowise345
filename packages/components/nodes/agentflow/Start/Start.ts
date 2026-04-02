@@ -18,7 +18,7 @@ class Start_Agentflow implements INode {
     constructor() {
         this.label = 'Start'
         this.name = 'startAgentflow'
-        this.version = 1.1
+        this.version = 1.2
         this.type = 'Start'
         this.category = 'Agent Flows'
         this.description = 'Starting point of the agentflow'
@@ -40,6 +40,11 @@ class Start_Agentflow implements INode {
                         label: 'Form Input',
                         name: 'formInput',
                         description: 'Start the workflow with form inputs'
+                    },
+                    {
+                        label: 'Webhook Trigger',
+                        name: 'webhookTrigger',
+                        description: 'Trigger the workflow via an external webhook'
                     }
                 ],
                 default: 'chatInput'
@@ -122,6 +127,59 @@ class Start_Agentflow implements INode {
                                 type: 'string'
                             }
                         ]
+                    }
+                ]
+            },
+            {
+                label: 'Webhook URL',
+                name: 'webhookURL',
+                type: 'string',
+                description: 'Send a POST request to this URL to trigger the workflow',
+                optional: true,
+                show: {
+                    startInputType: 'webhookTrigger'
+                }
+            },
+            {
+                label: 'Expected Body Parameters',
+                name: 'webhookBodyParams',
+                description: 'Define expected parameters in the webhook request body. Leave empty to accept any JSON body.',
+                type: 'array',
+                optional: true,
+                show: {
+                    startInputType: 'webhookTrigger'
+                },
+                array: [
+                    {
+                        label: 'Variable Name',
+                        name: 'name',
+                        type: 'string',
+                        placeholder: 'e.g. userId'
+                    },
+                    {
+                        label: 'Type',
+                        name: 'type',
+                        type: 'options',
+                        options: [
+                            {
+                                label: 'String',
+                                name: 'string'
+                            },
+                            {
+                                label: 'Number',
+                                name: 'number'
+                            },
+                            {
+                                label: 'Boolean',
+                                name: 'boolean'
+                            }
+                        ],
+                        default: 'string'
+                    },
+                    {
+                        label: 'Required',
+                        name: 'required',
+                        type: 'boolean'
                     }
                 ]
             },
@@ -211,6 +269,11 @@ class Start_Agentflow implements INode {
                 form = options.agentflowRuntime.form
             }
             outputData.form = form
+        }
+
+        if (startInputType === 'webhookTrigger') {
+            inputData.webhook = input
+            outputData.webhook = input
         }
 
         if (startEphemeralMemory) {

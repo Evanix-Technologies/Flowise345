@@ -185,6 +185,20 @@ export function NodeInputHandler({
 
         switch (inputParam.type) {
             case 'string':
+                // TODO: Wire flowId through AgentflowProvider to display the full dynamic
+                // webhook URL (see v2 Canvas NodeInputHandler.jsx for reference implementation).
+                if (inputParam.name === 'webhookURL') {
+                    return (
+                        <TextField
+                            fullWidth
+                            size='small'
+                            disabled
+                            value='POST /api/v1/webhook/{chatflowId}'
+                            sx={{ mt: 1 }}
+                            InputProps={{ readOnly: true }}
+                        />
+                    )
+                }
                 if (isExpandable) {
                     return (
                         <RichTextEditor
