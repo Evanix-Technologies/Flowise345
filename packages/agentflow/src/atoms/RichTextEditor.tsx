@@ -46,7 +46,7 @@ export interface RichTextEditorProps {
 
 const buildExtensions = (placeholder?: string, useMarkdown = true) => [
     Markdown,
-    StarterKit.configure({ codeBlock: false, ...(!useMarkdown && { link: false }) }),
+    StarterKit.configure({ codeBlock: false }),
     CodeBlockLowlight.configure({ lowlight, enableTabIndentation: true, tabSize: 2 }),
     ...(placeholder ? [Placeholder.configure({ placeholder })] : [])
 ]

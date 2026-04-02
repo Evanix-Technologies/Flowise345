@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
 
 import { Box, Button, Dialog, DialogActions, DialogContent, TextField, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material'
+import type { Editor } from '@tiptap/react'
 
 import { getEditorMarkdown } from '@/atoms/utils/'
 
@@ -49,7 +50,7 @@ export function ExpandTextDialog({
     const [localValue, setLocalValue] = useState(value)
     const [prevOpen, setPrevOpen] = useState(open)
     const [mode, setMode] = useState<EditorMode>('edit')
-    const editorRef = useRef<{ getMarkdown(): string; getHTML(): string; isEmpty: boolean } | null>(null)
+    const editorRef = useRef<Editor | null>(null)
 
     // Sync localValue and reset mode synchronously when the dialog opens so the TipTap
     // editor initialises with the correct content (useEffect would leave a one-render
