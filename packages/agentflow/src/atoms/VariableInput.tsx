@@ -166,6 +166,10 @@ export function VariableInput({
     // when the parent echoes our own onChange value back as the new prop.
     const lastEmittedRef = useRef<string>(value || '')
 
+    // Capture initial value for the mount effect below so we can depend only on
+    // `editor` without suppressing the exhaustive-deps rule.
+    const initialValueRef = useRef(value)
+
     const suggestionConfig = useMemo(
         () => (suggestionItems?.length ? createSuggestionConfig(suggestionItems) : undefined),
         [suggestionItems]
@@ -220,13 +224,12 @@ export function VariableInput({
     })
 
     // Load initial content once the editor is ready, detecting legacy HTML vs markdown.
-    // Runs once on mount — intentionally omits `value` from deps.
+    // Reads from a ref so only `editor` needs to be in the dep array.
     useEffect(() => {
-        if (!editor || !value) return
-        const contentType = isHtmlContent(value) ? 'html' : 'markdown'
-        editor.commands.setContent(value, { emitUpdate: false, contentType })
-        lastEmittedRef.current = value
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        if (!editor || !initialValueRef.current) return
+        const contentType = isHtmlContent(initialValueRef.current) ? 'html' : 'markdown'
+        editor.commands.setContent(initialValueRef.current, { emitUpdate: false, contentType })
+        lastEmittedRef.current = initialValueRef.current
     }, [editor])
 
     // Sync genuine external value changes (e.g. parent resets the field programmatically).

@@ -169,6 +169,11 @@ export function RichTextEditor({
     // when the parent echoes our own onChange value back as the new prop.
     const lastEmittedRef = useRef<string>(value || '')
 
+    // Capture initial value and useMarkdown for the mount effect below so we can
+    // depend only on `editor` without suppressing the exhaustive-deps rule.
+    const initialValueRef = useRef(value)
+    const useMarkdownRef = useRef(useMarkdown)
+
     const extensions = useMemo(() => buildExtensions(placeholder, useMarkdown), [placeholder, useMarkdown])
 
     const editor = useEditor({
@@ -203,25 +208,22 @@ export function RichTextEditor({
     }, [editor, onEditorReady])
 
     // Load initial content once the editor is ready, detecting legacy HTML vs markdown.
-    // Runs once on mount — intentionally omits `value` from deps.
+    // Reads from refs so only `editor` needs to be in the dep array.
     useEffect(() => {
-        if (!editor || !value) return
-        const contentType = !useMarkdown || isHtmlContent(value) ? 'html' : 'markdown'
-        editor.commands.setContent(value, { emitUpdate: false, contentType })
-        lastEmittedRef.current = value
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        if (!editor || !initialValueRef.current) return
+        const contentType = !useMarkdownRef.current || isHtmlContent(initialValueRef.current) ? 'html' : 'markdown'
+        editor.commands.setContent(initialValueRef.current, { emitUpdate: false, contentType })
+        lastEmittedRef.current = initialValueRef.current
     }, [editor])
 
     // Sync genuine external value changes (e.g. parent resets the field programmatically).
-    // `useMarkdown` is intentionally omitted — it is a static prop that never changes at runtime.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => {
         if (editor && value !== lastEmittedRef.current) {
             const contentType = !useMarkdown || isHtmlContent(value) ? 'html' : 'markdown'
             editor.commands.setContent(value, { emitUpdate: false, contentType })
             lastEmittedRef.current = value
         }
-    }, [editor, value])
+    }, [editor, value, useMarkdown])
 
     // Sync editable state when disabled prop changes
     useEffect(() => {
