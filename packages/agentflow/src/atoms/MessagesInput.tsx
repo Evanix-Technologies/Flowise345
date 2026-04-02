@@ -7,8 +7,8 @@ import { IconArrowsMaximize, IconPlus, IconTrash, IconVariable } from '@tabler/i
 import type { InputParam, NodeData } from '@/core/types'
 
 import { ExpandTextDialog } from './ExpandTextDialog'
+import { toSuggestionItems } from './toSuggestionItems'
 import { useStableKeys } from './useStableKeys'
-import type { SuggestionItem } from './VariableInput'
 import { VariableInput } from './VariableInput'
 import type { VariableItem } from './VariablePicker'
 
@@ -30,6 +30,7 @@ export interface MessagesInputProps {
     inputParam: InputParam
     data: NodeData
     disabled?: boolean
+    /** Variable items for `{{ }}` autocomplete in message content fields. */
     variableItems?: VariableItem[]
     onDataChange?: (params: { inputParam: InputParam; newValue: unknown }) => void
 }
@@ -49,21 +50,7 @@ export function MessagesInput({ inputParam, data, disabled = false, variableItem
 
     const { keys: effectiveKeys, removeKey } = useStableKeys(messages.length, 'message')
 
-    const suggestionItems: SuggestionItem[] | undefined = useMemo(() => {
-        if (!variableItems || variableItems.length === 0) return undefined
-        const idCount = new Map<string, number>()
-        return variableItems.map((v) => {
-            const baseId = v.value.replace(/{{|}}/g, '')
-            const count = idCount.get(baseId) ?? 0
-            idCount.set(baseId, count + 1)
-            return {
-                id: count === 0 ? baseId : `${baseId}__${count}`,
-                label: v.label,
-                description: v.description,
-                category: v.category
-            }
-        })
-    }, [variableItems])
+    const suggestionItems = useMemo(() => toSuggestionItems(variableItems), [variableItems])
 
     const handleRoleChange = useCallback(
         (index: number, role: string) => {

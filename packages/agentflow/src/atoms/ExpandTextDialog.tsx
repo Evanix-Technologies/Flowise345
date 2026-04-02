@@ -21,7 +21,7 @@ export interface ExpandTextDialogProps {
     inputType?: string
     /** Language hint for 'code' mode (e.g. 'javascript', 'python', 'json'). */
     language?: string
-    /** When provided, renders VariableInput (with mention support) instead of RichTextEditor for string fields. */
+    /** Variable suggestion items for `{{ }}` autocomplete in string mode. When provided, uses VariableInput instead of RichTextEditor. */
     suggestionItems?: SuggestionItem[]
     onConfirm: (value: string) => void
     onCancel: () => void

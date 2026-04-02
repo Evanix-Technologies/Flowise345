@@ -39,7 +39,7 @@ export interface VariableInputProps {
     rows?: number
     /** Available variables for autocomplete when typing `{{` */
     suggestionItems?: SuggestionItem[]
-    /** Auto-focus when the editor mounts */
+    /** Auto-focus the editor on mount */
     autoFocus?: boolean
     /** Called with the live editor instance once it is ready (and null on unmount). Used by ExpandTextDialog to call getMarkdown() on mode switch. */
     onEditorReady?: (editor: Editor | null) => void
