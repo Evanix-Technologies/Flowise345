@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 
 import { Box, Button, Dialog, DialogActions, DialogContent, TextField, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material'
 
@@ -42,6 +42,7 @@ export function ExpandTextDialog({
     const [localValue, setLocalValue] = useState(value)
     const [prevOpen, setPrevOpen] = useState(open)
     const [mode, setMode] = useState<EditorMode>('edit')
+    const editorRef = useRef<{ getMarkdown(): string } | null>(null)
 
     // Sync localValue and reset mode synchronously when the dialog opens so the TipTap
     // editor initialises with the correct content (useEffect would leave a one-render
@@ -60,7 +61,17 @@ export function ExpandTextDialog({
 
     const handleModeChange = (_: React.MouseEvent<HTMLElement>, newMode: EditorMode | null) => {
         // ToggleButtonGroup passes null when the active button is clicked again; ignore it
-        if (newMode) setMode(newMode)
+        if (!newMode) return
+        // When switching to Source, flush the editor's current state to markdown so the
+        // textarea shows markdown rather than a raw HTML string (Gap 3 fix — mirrors PR #6021).
+        if (newMode === 'source' && editorRef.current) {
+            try {
+                setLocalValue(editorRef.current.getMarkdown())
+            } catch {
+                // keep localValue as-is if getMarkdown() fails
+            }
+        }
+        setMode(newMode)
     }
 
     const isRichText = inputType === 'string'
@@ -132,6 +143,9 @@ export function ExpandTextDialog({
                                 disabled={disabled}
                                 rows={15}
                                 autoFocus
+                                onEditorReady={(editor) => {
+                                    editorRef.current = editor
+                                }}
                             />
                         </Box>
                     )

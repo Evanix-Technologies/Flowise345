@@ -5,6 +5,7 @@ import { styled } from '@mui/material/styles'
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
 import Placeholder from '@tiptap/extension-placeholder'
 import { Markdown } from '@tiptap/markdown'
+import type { Editor } from '@tiptap/react'
 import { EditorContent, useEditor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 // Individual language imports instead of lowlight/common to tree-shake highlight.js
@@ -35,6 +36,8 @@ export interface RichTextEditorProps {
     rows?: number
     /** Auto-focus when the editor mounts */
     autoFocus?: boolean
+    /** Called with the live editor instance once it is ready (and null on unmount). Used by ExpandTextDialog to call getMarkdown() on mode switch. */
+    onEditorReady?: (editor: Editor | null) => void
 }
 
 /* ── TipTap extensions (no mention/variable support — that belongs in features/) ── */
@@ -144,7 +147,15 @@ const StyledEditorContent = styled(EditorContent, {
  * This is a "dumb" UI primitive — it receives all data via props and owns no
  * business logic. Variable/mention support lives in the features layer.
  */
-export function RichTextEditor({ value, onChange, placeholder, disabled = false, rows, autoFocus = false }: RichTextEditorProps) {
+export function RichTextEditor({
+    value,
+    onChange,
+    placeholder,
+    disabled = false,
+    rows,
+    autoFocus = false,
+    onEditorReady
+}: RichTextEditorProps) {
     // Keep a ref to the latest onChange so the TipTap onUpdate callback never goes stale
     const onChangeRef = useRef(onChange)
     useEffect(() => {
@@ -159,25 +170,44 @@ export function RichTextEditor({ value, onChange, placeholder, disabled = false,
 
     const editor = useEditor({
         extensions,
-        content: value,
+        content: '',
         editable: !disabled,
         autofocus: autoFocus ? 'end' : false,
         onUpdate: ({ editor: ed }) => {
-            const markdown = ed.getMarkdown()
-            lastEmittedRef.current = markdown
-            onChangeRef.current(markdown)
+            // getMarkdown() in @tiptap/markdown v3 can return '' without throwing when the
+            // MarkdownManager fails to serialise a node. Guard against that by falling back
+            // to getHTML() whenever the string is empty but the document is not.
+            let value: string
+            try {
+                value = ed.getMarkdown() || (ed.isEmpty ? '' : ed.getHTML())
+            } catch {
+                value = ed.getHTML()
+            }
+            lastEmittedRef.current = value
+            onChangeRef.current(value)
         }
     })
 
-    // Sync external value changes into the editor only when the parent provides
-    // a value that differs from what we last emitted (i.e. a genuine external change,
-    // not our own onChange being echoed back by the parent's state update).
+    // Notify parent when the editor instance is ready (used by ExpandTextDialog to flush
+    // the current editor state to markdown when switching to Source mode).
+    useEffect(() => {
+        onEditorReady?.(editor)
+        return () => onEditorReady?.(null)
+    }, [editor, onEditorReady])
+
+    // Load initial content once the editor is ready, detecting legacy HTML vs markdown.
+    // Runs once on mount — intentionally omits `value` from deps.
+    useEffect(() => {
+        if (!editor || !value) return
+        const contentType = isHtmlContent(value) ? 'html' : 'markdown'
+        editor.commands.setContent(value, { emitUpdate: false, contentType })
+        lastEmittedRef.current = value
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [editor])
+
+    // Sync genuine external value changes (e.g. parent resets the field programmatically).
     useEffect(() => {
         if (editor && value !== lastEmittedRef.current) {
-            // Legacy HTML values (saved before markdown migration) must be loaded as HTML.
-            // New markdown values must be loaded with contentType: 'markdown' so TipTap's
-            // Markdown extension parses headings, lists, etc. correctly instead of treating
-            // them as raw text.
             const contentType = isHtmlContent(value) ? 'html' : 'markdown'
             editor.commands.setContent(value, { emitUpdate: false, contentType })
             lastEmittedRef.current = value

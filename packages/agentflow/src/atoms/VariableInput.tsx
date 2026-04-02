@@ -162,9 +162,6 @@ export function VariableInput({ value, onChange, placeholder, disabled = false, 
             StarterKit.configure({
                 codeBlock: false
             }),
-            // Markdown extension enables storage.markdown.getMarkdown() serialization and
-            // activates the CustomMention markdownTokenizer so {{variable}} tokens survive
-            // markdown round-trips without corruption.
             Markdown,
             CodeBlockLowlight.configure({ lowlight, enableTabIndentation: true, tabSize: 2 }),
             ...(placeholder ? [Placeholder.configure({ placeholder })] : []),
@@ -190,23 +187,36 @@ export function VariableInput({ value, onChange, placeholder, disabled = false, 
 
     const editor = useEditor({
         extensions,
-        content: value || '',
+        content: '',
         editable: !disabled,
         onUpdate: ({ editor: ed }) => {
-            const markdown = ed.getMarkdown()
-            lastEmittedRef.current = markdown
-            onChangeRef.current(markdown)
+            // getMarkdown() in @tiptap/markdown v3 can return '' without throwing when the
+            // MarkdownManager fails to serialise a node. Guard against that by falling back
+            // to getHTML() whenever the string is empty but the document is not.
+            let value: string
+            try {
+                value = ed.getMarkdown() || (ed.isEmpty ? '' : ed.getHTML())
+            } catch {
+                value = ed.getHTML()
+            }
+            lastEmittedRef.current = value
+            onChangeRef.current(value)
         }
     })
 
-    // Sync external value changes into the editor only when the parent provides
-    // a value that differs from what we last emitted (i.e. a genuine external change,
-    // not our own onChange being echoed back by the parent's state update).
+    // Load initial content once the editor is ready, detecting legacy HTML vs markdown.
+    // Runs once on mount — intentionally omits `value` from deps.
+    useEffect(() => {
+        if (!editor || !value) return
+        const contentType = isHtmlContent(value) ? 'html' : 'markdown'
+        editor.commands.setContent(value, { emitUpdate: false, contentType })
+        lastEmittedRef.current = value
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [editor])
+
+    // Sync genuine external value changes (e.g. parent resets the field programmatically).
     useEffect(() => {
         if (editor && value !== lastEmittedRef.current) {
-            // Legacy HTML values (saved before markdown migration) must be loaded as HTML.
-            // New markdown values must be loaded with contentType: 'markdown' so TipTap's
-            // Markdown extension parses headings, lists, {{variable}} tokens, etc. correctly.
             const contentType = isHtmlContent(value) ? 'html' : 'markdown'
             editor.commands.setContent(value, { emitUpdate: false, contentType })
             lastEmittedRef.current = value
