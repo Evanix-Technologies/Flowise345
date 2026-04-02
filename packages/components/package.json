@@ -17,7 +17,7 @@
             "types": "./dist/nodes/*.d.ts",
             "default": "./dist/nodes/*.js"
         },
-        "./*": "./*"
+        "./*": "./dist/*"
     },
     "scripts": {
         "build": "tsc && gulp",
