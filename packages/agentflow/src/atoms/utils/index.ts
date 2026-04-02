@@ -1,1 +1,1 @@
-export { isHtmlContent } from './editorUtils'
+export { getEditorMarkdown, isHtmlContent } from './editorUtils'

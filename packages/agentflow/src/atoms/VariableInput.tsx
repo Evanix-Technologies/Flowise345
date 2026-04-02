@@ -15,7 +15,7 @@ import python from 'highlight.js/lib/languages/python'
 import typescript from 'highlight.js/lib/languages/typescript'
 import { createLowlight } from 'lowlight'
 
-import { isHtmlContent } from '@/atoms/utils/'
+import { getEditorMarkdown, isHtmlContent } from '@/atoms/utils/'
 import { CustomMention } from '@/core/primitives/customMention'
 import { tokens } from '@/core/theme/tokens'
 
@@ -209,15 +209,7 @@ export function VariableInput({
         editable: !disabled,
         autofocus: autoFocus ? 'end' : false,
         onUpdate: ({ editor: ed }) => {
-            // getMarkdown() in @tiptap/markdown v3 can return '' without throwing when the
-            // MarkdownManager fails to serialise a node. Guard against that by falling back
-            // to getHTML() whenever the string is empty but the document is not.
-            let value: string
-            try {
-                value = ed.getMarkdown() || (ed.isEmpty ? '' : ed.getHTML())
-            } catch {
-                value = ed.getHTML()
-            }
+            const value = getEditorMarkdown(ed)
             lastEmittedRef.current = value
             onChangeRef.current(value)
         }

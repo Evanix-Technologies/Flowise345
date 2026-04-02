@@ -11,3 +11,20 @@ export function isHtmlContent(content: unknown): boolean {
     if (!content || typeof content !== 'string') return false
     return /<(?:p|div|span|h[1-6]|ul|ol|li|br|code|pre|blockquote|table|strong|em)\b/i.test(content)
 }
+
+/**
+ * Safely serialise a TipTap editor to markdown, falling back to HTML when
+ * `getMarkdown()` returns an empty string for a non-empty document — a known
+ * issue in `@tiptap/markdown` v3 where the MarkdownManager may silently fail
+ * to serialise certain node types.
+ */
+export function getEditorMarkdown(editor: { getMarkdown(): string; getHTML(): string; isEmpty: boolean }): string {
+    try {
+        const markdown = editor.getMarkdown()
+        if (markdown) return markdown
+        if (editor.isEmpty) return ''
+        return editor.getHTML()
+    } catch {
+        return editor.getHTML()
+    }
+}
