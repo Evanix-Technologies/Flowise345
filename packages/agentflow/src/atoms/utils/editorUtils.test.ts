@@ -1,4 +1,4 @@
-import { isHtmlContent } from '../../atoms/utils/editorUtils'
+import { getEditorMarkdown, isHtmlContent } from '../../atoms/utils/editorUtils'
 
 describe('isHtmlContent', () => {
     // Falsy / non-string inputs
@@ -87,5 +87,33 @@ describe('isHtmlContent', () => {
     // Case-insensitivity
     it('returns true for uppercase tag like <P>', () => {
         expect(isHtmlContent('<P>uppercase</P>')).toBe(true)
+    })
+})
+
+describe('getEditorMarkdown', () => {
+    it('returns markdown when getMarkdown() returns a non-empty string', () => {
+        const editor = { getMarkdown: () => '## heading', getHTML: () => '<h2>heading</h2>', isEmpty: false }
+        expect(getEditorMarkdown(editor)).toBe('## heading')
+    })
+
+    it('returns empty string when getMarkdown() returns "" and editor is empty', () => {
+        const editor = { getMarkdown: () => '', getHTML: () => '', isEmpty: true }
+        expect(getEditorMarkdown(editor)).toBe('')
+    })
+
+    it('falls back to HTML when getMarkdown() returns "" but editor is not empty', () => {
+        const editor = { getMarkdown: () => '', getHTML: () => '<p>hello</p>', isEmpty: false }
+        expect(getEditorMarkdown(editor)).toBe('<p>hello</p>')
+    })
+
+    it('falls back to HTML when getMarkdown() throws', () => {
+        const editor = {
+            getMarkdown: () => {
+                throw new Error('serialization failed')
+            },
+            getHTML: () => '<p>fallback</p>',
+            isEmpty: false
+        }
+        expect(getEditorMarkdown(editor)).toBe('<p>fallback</p>')
     })
 })

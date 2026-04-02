@@ -44,7 +44,7 @@ export interface RichTextEditorProps {
 
 /* ── TipTap extensions (no mention/variable support — that belongs in features/) ── */
 
-const buildExtensions = (placeholder?: string, useMarkdown = true) => [
+const buildExtensions = (placeholder?: string) => [
     Markdown,
     StarterKit.configure({ codeBlock: false }),
     CodeBlockLowlight.configure({ lowlight, enableTabIndentation: true, tabSize: 2 }),
@@ -174,7 +174,7 @@ export function RichTextEditor({
     const initialValueRef = useRef(value)
     const useMarkdownRef = useRef(useMarkdown)
 
-    const extensions = useMemo(() => buildExtensions(placeholder, useMarkdown), [placeholder, useMarkdown])
+    const extensions = useMemo(() => buildExtensions(placeholder), [placeholder])
 
     const editor = useEditor({
         extensions,

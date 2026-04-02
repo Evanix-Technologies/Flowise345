@@ -269,6 +269,17 @@ describe('ExpandTextDialog', () => {
             expect(screen.queryByRole('button', { name: 'Source' })).not.toBeInTheDocument()
         })
 
+        it('should not change mode when the active toggle button is clicked again', () => {
+            render(
+                <ExpandTextDialog open={true} value='## My heading' inputType='string' onConfirm={mockOnConfirm} onCancel={mockOnCancel} />
+            )
+
+            // Already in Edit mode — clicking Edit again should keep the rich-text editor visible
+            fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
+            expect(screen.getByTestId('rich-text-editor')).toBeInTheDocument()
+            expect(screen.queryByTestId('source-input')).not.toBeInTheDocument()
+        })
+
         it('should switch to Source mode showing a raw text field when Source is clicked', () => {
             render(
                 <ExpandTextDialog open={true} value='## My heading' inputType='string' onConfirm={mockOnConfirm} onCancel={mockOnCancel} />

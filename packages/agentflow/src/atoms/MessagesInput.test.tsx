@@ -9,6 +9,8 @@ const mockOnDataChange = jest.fn()
 
 jest.mock('@tabler/icons-react', () => ({
     IconArrowsMaximize: () => <span data-testid='icon-expand' />,
+    IconCode: () => <span />,
+    IconPencil: () => <span />,
     IconPlus: () => <span data-testid='icon-plus' />,
     IconTrash: () => <span data-testid='icon-trash' />,
     IconVariable: () => <span data-testid='icon-variable' />

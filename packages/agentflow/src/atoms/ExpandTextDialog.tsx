@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
 
 import { Box, Button, Dialog, DialogActions, DialogContent, TextField, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material'
+import { IconCode, IconPencil } from '@tabler/icons-react'
 import type { Editor } from '@tiptap/react'
 
 import { getEditorMarkdown } from '@/atoms/utils/'
@@ -100,9 +101,11 @@ export function ExpandTextDialog({
                                 aria-label='editor mode'
                             >
                                 <ToggleButton value='edit' aria-label='Edit'>
+                                    <IconPencil size='1rem' stroke={1.5} style={{ marginRight: 4 }} />
                                     Edit
                                 </ToggleButton>
                                 <ToggleButton value='source' aria-label='Source'>
+                                    <IconCode size='1rem' stroke={1.5} style={{ marginRight: 4 }} />
                                     Source
                                 </ToggleButton>
                             </ToggleButtonGroup>
