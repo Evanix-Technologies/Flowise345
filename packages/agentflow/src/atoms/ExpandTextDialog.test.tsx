@@ -355,4 +355,83 @@ describe('ExpandTextDialog', () => {
             expect(screen.queryByTestId('source-input')).not.toBeInTheDocument()
         })
     })
+
+    // --- With suggestionItems (VariableInput mode) ---
+
+    describe('inputType="string" with suggestionItems', () => {
+        const mockSuggestionItems = [{ id: 'question', label: 'question', description: "User's question", category: 'Chat Context' }]
+
+        it('should render VariableInput instead of RichTextEditor in Edit mode when suggestionItems provided', () => {
+            render(
+                <ExpandTextDialog
+                    open={true}
+                    value='Hello'
+                    inputType='string'
+                    suggestionItems={mockSuggestionItems}
+                    onConfirm={mockOnConfirm}
+                    onCancel={mockOnCancel}
+                />
+            )
+
+            expect(screen.getByTestId('variable-input')).toBeInTheDocument()
+            expect(screen.queryByTestId('rich-text-editor')).not.toBeInTheDocument()
+        })
+
+        it('should switch to Source mode and back to VariableInput when suggestionItems provided', () => {
+            render(
+                <ExpandTextDialog
+                    open={true}
+                    value='Hello {{question}}'
+                    inputType='string'
+                    suggestionItems={mockSuggestionItems}
+                    onConfirm={mockOnConfirm}
+                    onCancel={mockOnCancel}
+                />
+            )
+
+            fireEvent.click(screen.getByRole('button', { name: 'Source' }))
+            expect(screen.getByTestId('source-input')).toBeInTheDocument()
+            expect(screen.queryByTestId('variable-input')).not.toBeInTheDocument()
+
+            fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
+            expect(screen.getByTestId('variable-input')).toBeInTheDocument()
+            expect(screen.queryByTestId('source-input')).not.toBeInTheDocument()
+        })
+
+        it('should still show Edit/Source toggle when suggestionItems provided', () => {
+            render(
+                <ExpandTextDialog
+                    open={true}
+                    value=''
+                    inputType='string'
+                    suggestionItems={mockSuggestionItems}
+                    onConfirm={mockOnConfirm}
+                    onCancel={mockOnCancel}
+                />
+            )
+
+            expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument()
+            expect(screen.getByRole('button', { name: 'Source' })).toBeInTheDocument()
+        })
+
+        it('should save edits made in Source mode when suggestionItems provided', () => {
+            render(
+                <ExpandTextDialog
+                    open={true}
+                    value='Hello {{question}}'
+                    inputType='string'
+                    suggestionItems={mockSuggestionItems}
+                    onConfirm={mockOnConfirm}
+                    onCancel={mockOnCancel}
+                />
+            )
+
+            fireEvent.click(screen.getByRole('button', { name: 'Source' }))
+            const sourceTextarea = screen.getByTestId('source-input').querySelector('textarea')!
+            fireEvent.change(sourceTextarea, { target: { value: 'Updated {{question}}' } })
+            fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+            expect(mockOnConfirm).toHaveBeenCalledWith('Updated {{question}}')
+        })
+    })
 })

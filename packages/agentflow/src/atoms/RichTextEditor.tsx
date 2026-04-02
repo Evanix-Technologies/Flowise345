@@ -16,8 +16,8 @@ import python from 'highlight.js/lib/languages/python'
 import typescript from 'highlight.js/lib/languages/typescript'
 import { createLowlight } from 'lowlight'
 
+import { isHtmlContent } from '@/atoms/utils/'
 import { tokens } from '@/core/theme/tokens'
-import { isHtmlContent } from '@/core/utils/editorUtils'
 
 const lowlight = createLowlight()
 lowlight.register('javascript', javascript)
@@ -213,6 +213,8 @@ export function RichTextEditor({
     }, [editor])
 
     // Sync genuine external value changes (e.g. parent resets the field programmatically).
+    // `useMarkdown` is intentionally omitted — it is a static prop that never changes at runtime.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => {
         if (editor && value !== lastEmittedRef.current) {
             const contentType = !useMarkdown || isHtmlContent(value) ? 'html' : 'markdown'

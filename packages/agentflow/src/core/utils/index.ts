@@ -12,6 +12,3 @@ export { buildDynamicOutputAnchors, parseOutputHandleIndex } from './dynamicOutp
 
 // Variable utilities
 export { getUpstreamNodes } from './variableUtils'
-
-// Editor content-type detection
-export { isHtmlContent } from './editorUtils'

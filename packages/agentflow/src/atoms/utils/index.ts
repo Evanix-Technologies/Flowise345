@@ -1,0 +1,1 @@
+export { isHtmlContent } from './editorUtils'

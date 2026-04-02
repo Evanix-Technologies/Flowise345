@@ -1,4 +1,4 @@
-import { isHtmlContent } from './editorUtils'
+import { isHtmlContent } from '../../atoms/utils/editorUtils'
 
 describe('isHtmlContent', () => {
     // Falsy / non-string inputs
