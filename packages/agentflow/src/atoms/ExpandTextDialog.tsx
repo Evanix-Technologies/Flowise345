@@ -4,6 +4,8 @@ import { Box, Button, Dialog, DialogActions, DialogContent, TextField, ToggleBut
 
 import { CodeInput } from './CodeInput'
 import { RichTextEditor } from './RichTextEditor.lazy'
+import type { SuggestionItem } from './VariableInput'
+import { VariableInput } from './VariableInput'
 
 export interface ExpandTextDialogProps {
     open: boolean
@@ -15,6 +17,8 @@ export interface ExpandTextDialogProps {
     inputType?: string
     /** Language hint for 'code' mode (e.g. 'javascript', 'python', 'json'). */
     language?: string
+    /** When provided, renders VariableInput (with mention support) instead of RichTextEditor for string fields. */
+    suggestionItems?: SuggestionItem[]
     onConfirm: (value: string) => void
     onCancel: () => void
 }
@@ -36,6 +40,7 @@ export function ExpandTextDialog({
     disabled = false,
     inputType = 'string',
     language,
+    suggestionItems,
     onConfirm,
     onCancel
 }: ExpandTextDialogProps) {
@@ -126,6 +131,19 @@ export function ExpandTextDialog({
                             placeholder={placeholder}
                             data-testid='source-input'
                             inputProps={{ style: { fontFamily: 'monospace', fontSize: '0.85em' } }}
+                        />
+                    ) : suggestionItems?.length ? (
+                        <VariableInput
+                            value={localValue}
+                            onChange={setLocalValue}
+                            placeholder={placeholder}
+                            disabled={disabled}
+                            rows={15}
+                            autoFocus
+                            suggestionItems={suggestionItems}
+                            onEditorReady={(editor) => {
+                                editorRef.current = editor
+                            }}
                         />
                     ) : (
                         <Box

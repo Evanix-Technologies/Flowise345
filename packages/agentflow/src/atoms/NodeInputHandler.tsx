@@ -524,6 +524,7 @@ export function NodeInputHandler({
                     disabled={disabled}
                     inputType={inputParam?.type}
                     language={inputParam?.type === 'code' ? inputParam.codeLanguage : undefined}
+                    suggestionItems={suggestionItems}
                     onConfirm={handleExpandConfirm}
                     onCancel={() => setExpandOpen(false)}
                 />

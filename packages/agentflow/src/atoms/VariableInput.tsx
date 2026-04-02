@@ -6,6 +6,7 @@ import { mergeAttributes } from '@tiptap/core'
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
 import Placeholder from '@tiptap/extension-placeholder'
 import { Markdown } from '@tiptap/markdown'
+import type { Editor } from '@tiptap/react'
 import { EditorContent, useEditor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import javascript from 'highlight.js/lib/languages/javascript'
@@ -38,6 +39,10 @@ export interface VariableInputProps {
     rows?: number
     /** Available variables for autocomplete when typing `{{` */
     suggestionItems?: SuggestionItem[]
+    /** Auto-focus when the editor mounts */
+    autoFocus?: boolean
+    /** Called with the live editor instance once it is ready (and null on unmount). Used by ExpandTextDialog to call getMarkdown() on mode switch. */
+    onEditorReady?: (editor: Editor | null) => void
 }
 
 /* ── Styled wrapper matching RichTextEditor styling ── */
@@ -142,7 +147,16 @@ const StyledEditorContent = styled(EditorContent, {
  *
  * This is the agentflow equivalent of the UI package's RichInput component.
  */
-export function VariableInput({ value, onChange, placeholder, disabled = false, rows, suggestionItems }: VariableInputProps) {
+export function VariableInput({
+    value,
+    onChange,
+    placeholder,
+    disabled = false,
+    rows,
+    suggestionItems,
+    autoFocus = false,
+    onEditorReady
+}: VariableInputProps) {
     const onChangeRef = useRef(onChange)
     useEffect(() => {
         onChangeRef.current = onChange
@@ -189,6 +203,7 @@ export function VariableInput({ value, onChange, placeholder, disabled = false, 
         extensions,
         content: '',
         editable: !disabled,
+        autofocus: autoFocus ? 'end' : false,
         onUpdate: ({ editor: ed }) => {
             // getMarkdown() in @tiptap/markdown v3 can return '' without throwing when the
             // MarkdownManager fails to serialise a node. Guard against that by falling back
@@ -222,6 +237,13 @@ export function VariableInput({ value, onChange, placeholder, disabled = false, 
             lastEmittedRef.current = value
         }
     }, [editor, value])
+
+    // Notify parent when the editor instance is ready (used by ExpandTextDialog to flush
+    // the current editor state to markdown when switching to Source mode).
+    useEffect(() => {
+        onEditorReady?.(editor)
+        return () => onEditorReady?.(null)
+    }, [editor, onEditorReady])
 
     // Sync editable state
     useEffect(() => {
