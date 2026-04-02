@@ -159,10 +159,10 @@ export function VariableInput({ value, onChange, placeholder, disabled = false, 
 
     const extensions = useMemo(
         () => [
+            Markdown,
             StarterKit.configure({
                 codeBlock: false
             }),
-            Markdown,
             CodeBlockLowlight.configure({ lowlight, enableTabIndentation: true, tabSize: 2 }),
             ...(placeholder ? [Placeholder.configure({ placeholder })] : []),
             ...(suggestionConfig

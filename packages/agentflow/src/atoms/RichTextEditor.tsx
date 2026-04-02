@@ -38,13 +38,15 @@ export interface RichTextEditorProps {
     autoFocus?: boolean
     /** Called with the live editor instance once it is ready (and null on unmount). Used by ExpandTextDialog to call getMarkdown() on mode switch. */
     onEditorReady?: (editor: Editor | null) => void
+    /** When true, emits markdown; when false, emits HTML. Defaults to true. */
+    useMarkdown?: boolean
 }
 
 /* ── TipTap extensions (no mention/variable support — that belongs in features/) ── */
 
-const buildExtensions = (placeholder?: string) => [
-    StarterKit.configure({ codeBlock: false }),
+const buildExtensions = (placeholder?: string, useMarkdown = true) => [
     Markdown,
+    StarterKit.configure({ codeBlock: false, ...(!useMarkdown && { link: false }) }),
     CodeBlockLowlight.configure({ lowlight, enableTabIndentation: true, tabSize: 2 }),
     ...(placeholder ? [Placeholder.configure({ placeholder })] : [])
 ]
@@ -154,7 +156,8 @@ export function RichTextEditor({
     disabled = false,
     rows,
     autoFocus = false,
-    onEditorReady
+    onEditorReady,
+    useMarkdown = true
 }: RichTextEditorProps) {
     // Keep a ref to the latest onChange so the TipTap onUpdate callback never goes stale
     const onChangeRef = useRef(onChange)
@@ -166,7 +169,7 @@ export function RichTextEditor({
     // when the parent echoes our own onChange value back as the new prop.
     const lastEmittedRef = useRef<string>(value || '')
 
-    const extensions = useMemo(() => buildExtensions(placeholder), [placeholder])
+    const extensions = useMemo(() => buildExtensions(placeholder, useMarkdown), [placeholder, useMarkdown])
 
     const editor = useEditor({
         extensions,
@@ -174,13 +177,17 @@ export function RichTextEditor({
         editable: !disabled,
         autofocus: autoFocus ? 'end' : false,
         onUpdate: ({ editor: ed }) => {
-            // getMarkdown() in @tiptap/markdown v3 can return '' without throwing when the
-            // MarkdownManager fails to serialise a node. Guard against that by falling back
-            // to getHTML() whenever the string is empty but the document is not.
             let value: string
-            try {
-                value = ed.getMarkdown() || (ed.isEmpty ? '' : ed.getHTML())
-            } catch {
+            if (useMarkdown) {
+                // getMarkdown() in @tiptap/markdown v3 can return '' without throwing when the
+                // MarkdownManager fails to serialise a node. Guard against that by falling back
+                // to getHTML() whenever the string is empty but the document is not.
+                try {
+                    value = ed.getMarkdown() || (ed.isEmpty ? '' : ed.getHTML())
+                } catch {
+                    value = ed.getHTML()
+                }
+            } else {
                 value = ed.getHTML()
             }
             lastEmittedRef.current = value
@@ -199,7 +206,7 @@ export function RichTextEditor({
     // Runs once on mount — intentionally omits `value` from deps.
     useEffect(() => {
         if (!editor || !value) return
-        const contentType = isHtmlContent(value) ? 'html' : 'markdown'
+        const contentType = !useMarkdown || isHtmlContent(value) ? 'html' : 'markdown'
         editor.commands.setContent(value, { emitUpdate: false, contentType })
         lastEmittedRef.current = value
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -208,7 +215,7 @@ export function RichTextEditor({
     // Sync genuine external value changes (e.g. parent resets the field programmatically).
     useEffect(() => {
         if (editor && value !== lastEmittedRef.current) {
-            const contentType = isHtmlContent(value) ? 'html' : 'markdown'
+            const contentType = !useMarkdown || isHtmlContent(value) ? 'html' : 'markdown'
             editor.commands.setContent(value, { emitUpdate: false, contentType })
             lastEmittedRef.current = value
         }
